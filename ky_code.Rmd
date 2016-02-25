@@ -2,7 +2,7 @@
 title: "Kentucky Analysis"
 author: "Julie Ghekas"
 date: "February 3, 2016"
-output: html_document
+output: pdf_document
 ---
 
 I will begin to replicate the Massachusetts analysis with Kentucky, using the full data.
@@ -14,12 +14,13 @@ pop99=read.fwf('~/Downloads/pop9913.txt',width=c(2,3,4,1,1,rep(8,14),25,1))
 colnames(pop99)=c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
 library(reshape2)
 library(car)
+library(RItools)
 ```
 
 I'm now going to subset the data for the years that we want--2007-2013.  2010 is the year the ACA was enacted, so in keeping with Sommers, I'll use the three years preceding it and the three years following for the analysis.
 
 ```{r}
-pop13=subset(pop99,pop99$year>=2007)
+pop13=subset(pop99,pop99$year>=2005)
 pop13=subset(pop13,pop13$type==3)
 pop13$a2034=pop13$a2024+pop13$a2534
 ```
@@ -56,7 +57,7 @@ hisp=cbind(hisps[,1:2],100*t(apply(hisps[,3:4],1,prop.table)))
 ```
 
 ```{r}
-mort13=subset(mort99,mort99$year>=2007)
+mort13=subset(mort99,mort99$year>=2005)
 mort13=subset(mort13,mort13$age>=09 & mort13$age<=13)
 deaths=aggregate(deaths~county+state+year,sum,data=mort13)
 pop13$pops=pop13$a2024+pop13$a2534+pop13$a3544+pop13$a4554+pop13$a5564
@@ -64,7 +65,7 @@ pops=aggregate(pops~county+state+year,sum,data=pop13)
 total=merge(pops,deaths,by=c('year','state','county'))
 total$mrate=total$deaths/total$pops*100000
 totals=dcast(data=total,state+county~year,value.var='mrate')
-colnames(totals)=c('state','county','mr07','mr08','mr09','mr10','mr11','mr12','mr13')
+colnames(totals)=c('state','county','mr05','mr06','mr07','mr08','mr09','mr10','mr11','mr12','mr13')
 ```
 
 ```{r}
@@ -72,14 +73,36 @@ model3data=merge(ages,race,by=c('state','county'))
 model3data=merge(model3data,sex,by=c('state','county'))
 model3data=merge(model3data,hisp,by=c('state','county'))
 model3data=merge(model3data,totals,by=c('state','county'))
-model3data$treat=0
-model3data$treat[model3data$state==47]=1  #setting TN as the state control [BUT CHANGE TO KY]
+```
+
+Here I am reading in 2015 data from the Area Health Resource File (AHRF).  This data is from 2015.
+
+```{r}
+ahrf13=read.csv('~/Downloads/ahrf_limited.csv',header=T)
+ahrf13=subset(ahrf13,ahrf13$FIPS.County.Code!=0)
+colnames(ahrf13)=c('FIPS','state','county','poverty','income','unemployment','nohealthins')
+ahrf13=ahrf13[complete.cases(ahrf13),]
+ahrf13=ahrf13[,-which(colnames(ahrf13)=='FIPS')]
+model3data=merge(model3data,ahrf13,by=c('state','county'))
 ```
 
 ```{r}
-arhf=read.asc('~/Downloads/AHRF_2014-2015/DATA/ahrf2015.asc',gz=FALSE)
+model3data$treat=0
+model3data$treat[model3data$state==21]=1
+model3=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+poverty+income+unemployment+nohealthins,data=model3data,family=binomial(link='logit'))
+```
+
+```{r}
+ken.treat=subset(model3data,model3data$treat==1)
+ken.control=model3data[which(fitted(model3)>summary(fitted(model3))[5]),]
+ken.control=subset(ken.control,ken.control$treat!=1)
+ken.study=rbind(ken.treat,ken.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+poverty+income+unemployment+nohealthins, data=ken.study,report=c('all'))
 ```
 
 
+I need to go back through and:
+-make sure that I haven't removed counties through AHRF data availability
+-save the mort99 and pop99 as Rdata files
 
 

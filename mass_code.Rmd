@@ -2,7 +2,7 @@
 title: "Massachusetts Propensity Score Model"
 author: "Julie Ghekas"
 date: "January 20, 2016"
-output: html_document
+output: pdf_document
 ---
 
 I am documenting the decisions, assumptions, and confidence in those decisions in replicating the analysis for Massachusetts presented in the Sommers et al paper.
@@ -16,6 +16,7 @@ pop99=read.fwf('~/Downloads/pop9913.txt',width=c(2,3,4,1,1,rep(8,14),25,1))
 colnames(pop99)=c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
 library(reshape2)
 library(car)
+library(RItools)
 ```
 
 I then subset the data to include only the years I want for the Massachusetts replication, only counties, and add in a variable for an age group (simply the addition of two age groups).
@@ -111,4 +112,12 @@ Based on the above analysis, it appears as if one of the treated counties is bet
 fit.q3=summary(fitted(model2))[5]
 cont.count=which(fitted(model2)>fit.q3)
 length(unique(model2data$state[cont.count]))
+```
+
+```{r}
+mass.treat=subset(model2data,model2data$state==25)
+mass.control=model2data[cont.count,]
+mass.control=subset(mass.control,mass.control$state!=25)
+mass.study=rbind(mass.treat,mass.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr01+mr02+mr03+mr04+mr05+mr06, data=mass.study,report=c('all'))
 ```
