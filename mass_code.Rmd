@@ -14,6 +14,8 @@ mort99=read.fwf('~/Downloads/mort/MORT9913.txt',width=c(2,3,4,1,1,2,4,3,4))
 colnames(mort99)=c('state','county','year','racesex','hisp','age','ICD10cause','cause','deaths')
 pop99=read.fwf('~/Downloads/pop9913.txt',width=c(2,3,4,1,1,rep(8,14),25,1))
 colnames(pop99)=c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
+arf<-read.csv('~/Downloads/arfarfsixten.csv',header=T)
+colnames(arf)<-c('state','county','med610','medinc10','medinc06','pov10','pov06','ins10','ins06','unemp10','unemp06')
 library(reshape2)
 library(car)
 library(RItools)
@@ -25,6 +27,13 @@ I then subset the data to include only the years I want for the Massachusetts re
 pop06=subset(pop99,pop99$year>=2001 & pop99$year<=2006)
 pop06=subset(pop06,pop06$type==3)
 pop06$a2034=pop06$a2024+pop06$a2534
+```
+
+The following section was added to provide a mortality rate for all years, to help with the analysis of the comparison post-treatment.
+
+```{r}
+popall=subset(pop99,pop99$type==3)
+popall$a2034=popall$a2024+popall$a2534
 ```
 
 I then begin aggregating the data to accomplish the variables that I wish to have (in replication of the propensity score model discussed in Appendix Table 2).  
@@ -46,13 +55,13 @@ race=cbind(races[,1:2],100*t(apply(races[,3:5],1,prop.table)))
 sexmat=racesexmat
 sexmat$sex=recode(racesexmat$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
 sexmat$sex[sexmat$sex==1]="male"
-sexmat$sex[sexmat$sex==2]='female'
+sexmat$sex[sexmat$sex==2]="female"
 sexes=aggregate(count~sex+county+state,sum,data=sexmat) 
 sexes=dcast(data=sexes,state+county~sex)
 sex=cbind(sexes[,1:2],100*t(apply(sexes[,3:4],1,prop.table)))
 
 hispmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state,sum,data=pop06)
-hispmat$hisp=recode(hispmat$hisp, "2=1; 1=2; 9=2")
+hispmat$hisp=recode(hispmat$hisp, '2=1; 1=2; 9=2')
 hispmat$hisp[hispmat$hisp==1]="hisp"
 hispmat$hisp[hispmat$hisp==2]='nothisp'
 hisps=aggregate(count~hisp+county+state,sum,data=hispmat) 
@@ -77,6 +86,20 @@ totals=dcast(data=total,state+county~year,value.var='mrate')
 colnames(totals)=c('state','county','mr01','mr02','mr03','mr04','mr05','mr06')
 ```
 
+This section is added below to be able to compare the outcomes amongst the groups
+
+```{r}
+mortall=subset(mort99, mort99$age>=09 & mort99$age<=13)
+deathall=aggregate(deaths~county+state+year, sum, data=mortall)
+popall$pops=popall$a2024+popall$a2534+popall$a3544+popall$a4554+popall$a5564
+popall=aggregate(pops~county+state+year,sum,data=popall)
+totalall<-merge(popall,deathall,by=c('year','state','county'))
+totalall$mrate=totalall$deaths/totalall$pops*100000
+totalsall=dcast(data=totalall,state+county~year,value.var='mrate')
+colnames(totalsall)=c('state','county','mr99','mr00','mr01','mr02','mr03','mr04','mr05','mr06','mr07','mr08','mr09','mr10','mr11','mr12','mr13')
+totalsall[is.na(totalsall)]=0
+```
+
 Assumptions that I have made here: I assumed that this was general mortality.  I did not calculate the deaths amenable to health care rate, just the all told mortality rate.  I also assumed that the mortality rate only had individuals 20-64 considered.
 
 Here, I am going through and implementing the (modified) propensity score model, using only the variables that I have available to me directly from the CDC data, without using any other sources.  This relies on the removal of poverty rate, median household income, unemployment rate, and percent uninsured from the model.
@@ -88,14 +111,16 @@ model2data=merge(model2data,hisp,by=c('state','county'))
 model2data=merge(model2data,totals,by=c('state','county'))
 model2data$treat=0
 model2data$treat[model2data$state==25]=1
+model2data=merge(model2data,arf,by=c('state','county'))
 ```
 
-There are about 50 NAs in the model2data dataframe.  I believe that this is occurring as a result of the fact that the deaths are recorded if they happen.  For some small counties, there may be year(s) without deaths.  So, for a year without deaths, the rate would not be calculable.  Based on this belief, I will record the mortality rate for these counties as 0, resulting in a complete dataframe.
+There are about 50 NAs in the model2data dataframe.  The way that the mortalities are recorded, to the best of my understanding, is as a count.  The mortality entry only occurs if at least one individual died of that cause within a given age group, racial characteristic, and gender.  I believe that if a death didn't occur within a given demographic, this would result in a count of NA within the aggregated data.  For some small counties, there may be year(s) without deaths.  So, for a year without deaths, the rate would not be calculable.  Based on this belief, I will record the mortality rate for these counties as 0, resulting in a complete dataframe.  
 
 ```{r}
 model2data[is.na(model2data)]=0
-model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06,data=model2data,family=binomial(link='logit'))
+model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+unemp06+pov06+ins06+medinc06,data=model2data,family=binomial(link='logit'))
 summary(model2)
+boxplot(model2)
 ```
 
 This model predicts that for some counties, there is a probability of 0 that the county is in Massachusetts (the treatment group).  Below, I will explore the fitted values from this model.  The coefficients for this model do not appear to be consistent with those presented in Sommers' paper.  
@@ -120,4 +145,15 @@ mass.control=model2data[cont.count,]
 mass.control=subset(mass.control,mass.control$state!=25)
 mass.study=rbind(mass.treat,mass.control)
 xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr01+mr02+mr03+mr04+mr05+mr06, data=mass.study,report=c('all'))
+```
+
+
+```{r}
+mass.control.mort<-totalsall[cont.count,]
+mass.control.mort<-subset(mass.control.mort,mass.control.mort$state!=25)
+mass.treat.mort<-subset(totalsall,totalsall$state==25)
+mass.mort.study<-rbind(mass.treat.mort,mass.control.mort)
+mass.mort.study$treat=0
+mass.mort.study$treat[mass.mort.study$state==25]=1
+xBalance(treat~mr07+mr08+mr09+mr10+mr11+mr12+mr13,data=mass.mort.study,report=c('all'))
 ```
