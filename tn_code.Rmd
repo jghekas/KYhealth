@@ -60,12 +60,13 @@ model3data=merge(model3data,sex,by=c('state','county'))
 model3data=merge(model3data,hisp,by=c('state','county'))
 model3data=merge(model3data,totals,by=c('state','county'))
 model3data=merge(model3data,arf,by=c('state','county'))
+model3dat=model3data
 model4data=model3dat
 model4data$treat=0
 model4data$treat[model4data$state==47]=1
 states.tncontrol=c('4','5','6','8','9','10','17','18','19','21','24','25','26','27','30','32','33','34','35','36','38','39','41','42','44','47','50','53','54')
 model4data=model4data[model4data$state %in% states.tncontrol,]
-model4=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'))
+model4=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'),weights=pops)
 boxplot(model4)
 ```
 
@@ -86,6 +87,6 @@ stratumStructure(fm22)
 xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm22),data=model4data,report=c('adj.mean.diffs','std','z','chisquare.test'))
 fm23<-fullmatch(model4,data=model4data,omit.fraction=3/4,min.control=.25,max.control=12)
 stratumStructure(fm23)
-axBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm23),data=model4data,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm23),data=model4data,report=c('adj.mean.diffs','std','z','chisquare.test'))
 
 ```
