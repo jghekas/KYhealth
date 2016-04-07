@@ -1,0 +1,3 @@
+[submodule "src/RItools"]
+	path = src/RItools
+	url = git@github.com:markmfredrickson/RItools.git
