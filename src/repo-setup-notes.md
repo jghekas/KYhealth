@@ -23,7 +23,7 @@ installed version of the package will go.
 
 Next, I recommend installing the `devtools` and `withr` packages,
 available from CRAN.  After that you can do (specifying file names relative
-to the directory this file lives in, `RItools/src`):
+to the directory this file lives in, `KYhealth/src`):
 
 ```{r}
 library(devtools)
