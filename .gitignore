@@ -1,0 +1,14 @@
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+
+# RStudio files
+.Rproj.user/
+
+# Local directory for built R packages.
+# The build has to be specific to the OS and R version,
+# so it doesn't make sense to put it in the repo.
+lib/
