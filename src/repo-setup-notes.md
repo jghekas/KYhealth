@@ -18,8 +18,24 @@ $ git submodule update RItools
 
 ## installing and loading the external packages
 
-First, create a `lib` subdirectory of `RItools`.  This is where the
-installed version of the package will go.
+First, create a `lib` subdirectory of `KYhealth`.  This is where the
+installed version of the package will go. If you'll be using different
+machines and/or different versions of R, set up a subdirectory
+structure paralleling what you'll find in the `~/R` of a Windows or
+Linux setup: at the top level, PLATFORM, the value of
+`R.version$platform`; one level below that, VERSION, the value of
+
+```{r}
+with(R.version, paste0(major, ".", substr(minor, 1,1)))
+```
+Example:
+
+	$ ls lib
+	x86_64-apple-darwin15.3.0-library x86_64-unknown-linux-gnu-library
+
+	$ ls lib/x86_64-apple-darwin15.3.0-library
+	3.1   3.2
+
 
 Next, I recommend installing the `devtools` and `withr` packages,
 available from CRAN.  After that you can do (specifying file names relative
@@ -29,6 +45,20 @@ to the directory this file lives in, `KYhealth/src`):
 library(devtools)
 library(withr)
 with_libpaths("../lib/", install("./RItools"))
+```
+
+or, if you're setting up for use with different R versions or
+systems,
+
+```{r}
+library(devtools)
+library(withr)
+LIB <- with(R.version,
+            paste("../lib", platform,
+                  paste0(major, ".", substr(minor, 1,1)),
+                  sep="/")
+            )
+with_libpaths(LIB, install("./RItools"))
 ```
 
 Once that's done, you'll be able to load the library with
