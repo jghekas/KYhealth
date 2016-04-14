@@ -10,11 +10,21 @@ I am documenting the decisions, assumptions, and confidence in those decisions i
 To begin, I read in my data from the CDC.
 
 ```{r}
-mort99=read.fwf('~/Downloads/mort/MORT9913.txt',width=c(2,3,4,1,1,2,4,3,4))
+if (grepl("bbh", getwd())) #ie, Ben's setup
+{
+datadir = "/Volumes/data/nchs-CMF1989-2013/"
+mortdatadir = datadir
+} else # i.e., Julie's setup. Change as appropriate...
+{
+datadir = "~/Downloads/" 
+mortdatadir = "~/Downloads/mort/"
+}
+
+mort99=read.fwf(paste0(mortdatadir, 'MORT9913.txt'),width=c(2,3,4,1,1,2,4,3,4))
 colnames(mort99)=c('state','county','year','racesex','hisp','age','ICD10cause','cause','deaths')
-pop99=read.fwf('~/Downloads/pop9913.txt',width=c(2,3,4,1,1,rep(8,14),25,1))
+pop99=read.fwf(paste0(datadir, 'pop9913.txt'),width=c(2,3,4,1,1,rep(8,14),25,1))
 colnames(pop99)=c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
-arf<-read.csv('~/Downloads/arfarfsixten.csv',header=T)
+arf<-read.csv(paste0(datadir, 'arfarfsixten.csv'),header=T)
 colnames(arf)<-c('state','county','med610','medinc10','medinc06','pov10','pov06','ins10','ins06','unemp10','unemp06')
 library(reshape2)
 library(car)
