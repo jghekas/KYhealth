@@ -16,12 +16,15 @@ A list of basic analytical steps are:
 
 - [x]	Apply similar analyses as before to Tennessee, first draft
 
-- [ ]	Collaborator feedback on PS and post-matching analysis options for KY 
+- [x]	Collaborator feedback on PS and post-matching analysis options for KY 
 
 <!--- to them by Tuesday, March 29 --->
-- [ ]	Collaborator feedback on PS and post-matching analysis options for TN 
+- [x]	Collaborator feedback on PS and post-matching analysis options for TN 
 
 <!--- to them by Tuesday, March 29 --->
+
+- [ ]   Decision on matching and balance schemes to be pursued
+
 - [ ]	Outcome analysis between control and treatment Kentucky groups 
 
 <!--- Wednesday, March 30 --->
