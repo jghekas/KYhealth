@@ -18,10 +18,7 @@ A list of basic analytical steps are:
 
 - [x]	Collaborator feedback on PS and post-matching analysis options for KY 
 
-<!--- to them by Tuesday, March 29 --->
 - [x]	Collaborator feedback on PS and post-matching analysis options for TN 
-
-<!--- to them by Tuesday, March 29 --->
 
 - [ ]   Decision on matching and balance schemes to be pursued
 
