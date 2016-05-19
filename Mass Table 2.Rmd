@@ -1,0 +1,48 @@
+---
+title: "Massachusetts Table 2"
+author: "Julie Ghekas"
+date: "May 12, 2016"
+output: html_document
+---
+
+```{r}
+setwd('~')
+load('pop99.Rdata')
+pop05=subset(pop99,pop99$year==2005)
+pop05=subset(pop05, pop05$type==3)
+pop05$a2034 = pop05$a2024+pop05$a2534
+mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop05)
+ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
+mas1 = subset(ages, ages$state==25)
+lapply(mas1, mean)
+sum(mat1[,3])/sum(mat1[,c(3:6)])
+
+pop05 = subset(pop99, pop99$year>=2001& pop99$year<=2005)
+pop05 = subset(pop05, pop05$type==3)
+pop05$a2034 = pop05$a2024+pop05$a2534
+mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop05)
+ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
+mas1 = subset(ages, ages$state==25)
+lapply(mas1,mean)
+sum(mat1[,3])/sum(mat1[,c(3:6)])
+
+pop06= subset(pop99, pop99$year>=2001& pop99$year<=2006)
+pop06 = subset(pop06, pop06$type==3)
+pop06$a2034 = pop06$a2024+pop06$a2534
+mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop06)
+ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
+mas1 = subset(ages, ages$state==25)
+lapply(mas1,mean)
+sum(mat1[,3])/sum(mat1[,c(3:6)])
+
+pop06 = subset(pop06, pop06$year==2006)
+mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop06)
+ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
+mas1 = subset(ages, ages$state==25)
+lapply(mas1,mean)
+sum(mat1[,3])/sum(mat1[,c(3:6)])
+sum(mat1[,4])/sum(mat1[,c(3:6)])
+sum(mat1[,5])/sum(mat1[,c(3:6)])
+sum(mat1[,6])/sum(mat1[,c(3:6)])
+```
+
