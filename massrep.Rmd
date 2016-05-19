@@ -1,0 +1,164 @@
+---
+title: "Ben Report 5/9"
+author: "Julie Ghekas"
+date: "May 9, 2016"
+output: pdf_document
+---
+
+I attempted to reproduce the Massachusetts analysis here.  I started by identifying a control group using the top quartile of the propensity scores of the potential controls.  The balance assessments here are typically weighted, although I did explore what happened when they were unweighted.  When I did a balance assessment, I found that the insurance rate was significantly different regardless of how the balance assessment was performed.  Even with removing it from the balance assessment, there was still a significant lack of balance overall, even if none of the individual variables were significantly different.  While the insurance rate was not significant in the Sommers study, they did not perform a chi-square test (from what I could see).  
+
+The difference between this balance assessment and previously reported ones is that the ARF variables had not been included in the previous balance assessments. 
+
+At this time, I also examined the overall rates relative to Table 2.  I found that my calculations produced figures in the same ballpark but not exactly the same as their study.  Calculations that I tried: using just year 2005, using just year 2006, using years 2001-2005, using years 2001-2006.  For all of these, I tried with and without population weighting for finding the mean.  I never could match the numbers that were reported for Massachusetts.  
+
+Based on the unweighted glm for fitting a propensity score that I used, I found that the coefficients were always in the same ballpark as those reported in the Supplement of the Sommers paper.  I found this to be a positive sign, and it wouldn't surprise me if the differences in the baseline characteristic numbers didn't affect the differences in the coefficient estimates.
+
+I looked at the outcomes for the Massachusetts in two ways, to see if I could match the Sommers results in general.  These outcomes were population-weighted.  They mention that they used a differences-in-differences approach at the beginning, but never really brought up details that I noticed.  I looked at the outcome both as differences-in-differences and by the raw numbers.  With the differences-in-differences, I found that the only significant difference based on year occurred in 2008, although the overall distribution was significantly different.
+
+Without the difference-in-differences, every year had a difference with a p-value<.1, and the overall distribution of mortality rates was significantly different.  This seemed to match closer to the results that Sommers reports, although there were fewer outcome tables to closely examine my results compared to theirs.
+
+I also fit a negative binomial model to estimate the deaths.  From the ARF data that I have access to, I struggled to find insurance data for years prior to 2005.  I did end up removing 8 county-years where there were more deaths than the population size from this component of the analysis.
+
+Interestingly, the results from my negative binomial model are opposite of what you would hope to see.  I found that my treatment variable coefficient was one of four coefficients that weren't significant, while the rest were significant.  This result is contrary to what Sommers et al report in their paper.
+
+Below you will find the supporting data for what I have said above.
+
+```{r}
+setwd('~')
+library(reshape2)
+library(car)
+library(RItools)
+library(optmatch)
+library(brglm)
+library(MASS)
+load('model2data.Rdata')
+arf08 = read.csv('~/Downloads/arf08vars.csv',header=T)
+colnames(arf08) = c('state','county','inc07','inc06','inc05','inc04','inc03','inc02','inc01','inc00',
+                    'pov07','pov06','pov05','pov04','pov03','pov02','pov01','pov00',
+                    'ins05','emp07','emp06','emp05','emp04','emp03','emp02','emp01','emp00')
+model2data = merge(model2data, arf08, by=c('state','county'))
+#fit using 05 data
+model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov05
+           +inc05+emp05+ins05,data=model2data,family=binomial(link='logit'))
+fit=fitted(model2)
+model2dat=cbind(model2data,fit)
+men.treat=subset(model2dat,model2dat$treat==1)
+men.control=subset(model2dat,model2dat$treat==0)
+top4=summary(model2dat$fit)[5]
+men.control=subset(men.control,men.control$treat!=1)
+men.control=subset(men.control, men.control$fit>top4)
+men.study=rbind(men.treat,men.control)
+##an unweighted balance assessment for 2005 
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
+           mr03+mr04+pov05+inc05+emp05+ins05, data=men.study,report=c('all'))
+##weighted balance assessment for 2005
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
+           mr03+mr04+pov05+inc05+emp05+ins05, element.weights=pops, data=men.study,report=c('all'))
+
+
+#for 2006
+model2a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov06.y
+           +inc06+emp06+ins06,data=model2data,family=binomial(link='logit'))
+fita=fitted(model2a)
+model2adat=cbind(model2data,fita)
+men.treat=subset(model2adat,model2adat$treat==1)
+men.control=subset(model2adat,model2adat$treat==0)
+top4=summary(model2adat$fit)[5]
+men.control=subset(men.control,men.control$treat!=1)
+men.control=subset(men.control, men.control$fit>top4)
+men.study=rbind(men.treat,men.control)
+##an unweighted balance assessment for 2006
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
+           mr03+mr04+pov06.y+inc06+emp06+ins06, data=men.study,report=c('all'))
+##weighted balance assessment for 2006
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
+           mr03+mr04+pov06.y+inc06+emp06+ins06, element.weights=pops, data=men.study,report=c('all'))
+
+
+load('mort99.Rdata')
+load('pop99.Rdata')
+mort13=subset(mort99,mort99$year>=2005)
+mort13=subset(mort13,mort13$age>=09 & mort13$age<=13)
+deaths=aggregate(deaths~county+state+year,sum,data=mort13)
+pop13 = subset(pop99, pop99$year>=2005)
+pop13$pops=pop13$a2024+pop13$a2534+pop13$a3544+pop13$a4554+pop13$a5564
+pops=aggregate(pops~county+state+year,sum,data=pop13)
+popweights=aggregate(pops~county+state,sum,data=pop13)
+total=merge(pops,deaths,by=c('year','state','county'))
+total$mrate=total$deaths/total$pops*100000
+totals=dcast(data=total,state+county~year,value.var='mrate')
+colnames(totals)=c('state','county','mr05','mr06','mr07','mr08','mr09','mr10','mr11',
+                   'mr12','mr13')
+totals[is.na(totals)]=0
+
+men.study.out = merge(men.study, totals, by=c('state','county'), all.x=T)
+men.study.out = men.study.out[complete.cases(men.study.out),]
+colnames(men.study.out)
+#creating differences-in-differences
+men.study.out$mr07d = men.study.out$mr07 - men.study.out$mr06.y
+men.study.out$mr08d = men.study.out$mr08 - men.study.out$mr06.y
+men.study.out$mr09d = men.study.out$mr09 - men.study.out$mr06.y
+men.study.out$mr10d = men.study.out$mr10 - men.study.out$mr06.y
+
+colnames(men.study.out)
+xBalance(treat~mr07+mr08+mr09+mr10,element.weights=pops,data=men.study.out,
+         report=c('z.scores','p.value','chisquare.test'))
+xBalance(treat~mr07d+mr08d+mr09d+mr10d,element.weights=pops,data=men.study.out,
+         report=c('z.scores','p.value','chisquare.test'))
+
+##negative binomial model
+popall=subset(pop99, pop99$type==3)
+popall$a2034=popall$a2024+popall$a2534
+popa = popall[, c(1:5, 14:16, 22)]
+popa = melt(popa, id=c('state','county','year','racesex','hisp'))
+colnames(popa) = c('state','county','year','racesex','hisp','age','count')
+popa$age = recode(popa$age, "'a3544'=11; 'a4554'=12; 'a5564'=13; 'a2034'=10")
+morta = subset(mort99, mort99$age>=9 & mort99$age <=13)
+morta$age = recode(morta$age, "9=10; 10=10; 11=11; 12=12; 13=13")
+morta = aggregate(deaths~state+county+year+racesex+hisp+age,sum,data=morta)
+deathdata = merge(popa, morta, by=c('state','county','year','racesex','hisp','age'), 
+                  all=T)
+deathdata[is.na(deathdata)]=0
+deathdata$treat=0
+deathdata$treat[deathdata$state==25 & deathdata$year>2006]=1
+deathdata = subset(deathdata, deathdata$count>0)
+deathdata = deathdata[-which(deathdata$deaths/deathdata$count>1),]
+#there were 8 counties that had a death count higher than the population count. 
+#These all had counts of 1 and deaths of 2 or 3.
+deathdata$racesex = as.factor(deathdata$racesex)
+deathdata$state = as.factor(deathdata$state)
+deathdata$year = as.factor(deathdata$year)
+
+arf08 = read.csv('~/Downloads/arf08vars.csv',header=T)
+arf12 = read.csv('~/Downloads/arf12vars.csv',header=T)
+colnames(arf08) = c('state','county','inc07','inc06','inc05','inc04','inc03','inc02',
+                    'inc01','inc00',
+                    'pov07','pov06','pov05','pov04','pov03','pov02','pov01','pov00',
+                    'ins05','emp07','emp06','emp05','emp04','emp03','emp02','emp01','emp00')
+colnames(arf12) = c('state','county','inc11','inc10','inc09','inc08','inc07','inc06','inc05',
+                    'pov11','pov10','pov09','pov08','pov07','pov06','pov05','ins10','ins09',
+                    'ins08',
+                    'ins07','ins06','emp11','emp10','emp09','emp08','mep07','emp06','emp05')
+arf12 = arf12[,-c(7,8,9,14,15,16,26,27,28)]
+arfnb = merge(arf08, arf12, by=c('state','county'))
+arfnb = melt(arfnb, id=c('state','county'))
+head(arfnb)
+y = data.frame(arfvar=substr(arfnb$variable, 1,3), year=as.numeric(substr(arfnb$variable,4,5)))
+arfnb = cbind(arfnb, y)
+head(arfnb)
+arfnb$year=recode(arfnb$year, "7=2007;0=2000; 1=2001; 2=2002; 3=2003; 4=2004; 5=2005; 6=2006; 
+                  8=2008; 9=2009; 10=2010; 11=2011")
+arfnb = arfnb[,-3]
+arfnb = dcast(data=arfnb, state+county+year~arfvar)
+
+deathdata1 = merge(deathdata, arfnb, by=c('state','county','year'))
+deathdata1 = subset(deathdata1,deathdata1$year!=1999 & deathdata1$year!=2000 &
+                      deathdata1$year!=2011 & deathdata1$year!=2012 & deathdata1$year!=2013)
+
+
+
+model5 = glm(deaths/count~state+year+treat+racesex+hisp+age+emp+inc+pov,data=deathdata1,
+             weights=count,family=binomial(link=log))
+summary(model5)
+```
+
