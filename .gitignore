@@ -13,9 +13,13 @@
 # so it doesn't make sense to put it in the repo.
 lib/
 
-# The data for this project are made available with restrictions
-# on a per-user basis, so they'll have to be excluded from the repo.
-# Best practice is for .data to be a symbolic link mapping to a
-# directory that's kept encrypted until explicitly opened
-data
+# File to store instance-specific local variables
+# governing location of data and adjusting to computational capacities
+# of the R setup; see `Rprofile-env-vars-template.txt`, which is
+# part of the repo
+Rprofile-env-vars.R
+
 .Rproj.user
+
+# should we really be excluding this one from repo? Not sure...
+KYhealth.Rproj

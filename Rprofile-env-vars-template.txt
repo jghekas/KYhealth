@@ -1,0 +1,12 @@
+## `Rprofile-env-vars.R` must be set per-user and per-instance, so it doesn't go into the repo.
+## Here's the template, however.
+
+# place where raw data live (don't commit them!)
+datadir = "/Volumes/data/nchs-CMF1989-2013/"
+
+# some scripts use a separate subdirectory for the mortality data.
+mortdir = "/Volumes/data/nchs-CMF1989-2013/"
+
+# constant affecting how very large files are read in.  Machines w/ more memory
+# can take larger values
+buffsize = 2e6
