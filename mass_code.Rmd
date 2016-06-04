@@ -130,7 +130,7 @@ There are about 50 NAs in the model2data dataframe.  The way that the mortalitie
 model2data[is.na(model2data)]=0
 model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+unemp06+pov06+ins06+medinc06,data=model2data,family=binomial(link='logit'))
 summary(model2)
-boxplot(model2)
+optmatch::boxplot(model2)
 ```
 
 This model predicts that for some counties, there is a probability of 0 that the county is in Massachusetts (the treatment group).  Below, I will explore the fitted values from this model.  The coefficients for this model do not appear to be consistent with those presented in Sommers' paper.  
