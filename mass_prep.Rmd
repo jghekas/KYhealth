@@ -14,6 +14,7 @@ datadir = "~/Downloads/"
 mortdatadir = "~/Downloads/mort/"
 buffsize = 2e5
 }
+if (!file.exists(paste0(datadir, "created"))) stop(paste0("Have to create 'created' subdir of ", datadir))
 
 mort99=read.fwf(paste0(mortdatadir, 'MORT9913.txt'),width=c(2,3,4,1,1,2,4,3,4), buffersize=buffsize)
 colnames(mort99)=c('state','county','year','racesex','hisp','age','ICD10cause','cause','deaths')
@@ -50,4 +51,5 @@ mortall=subset(mort99, mort99$age>=09 & mort99$age<=13)
 As that was the last use of `pop99` in this script:
 ```{r}
 rm(pop99,mort99)
+save(popall,mortall,pop06,mort06,arf, file=paste0(datadir, "created/mass_prep.RData"))
 ```
