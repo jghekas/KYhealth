@@ -1,47 +1,19 @@
 ---
 title: "Massachusetts Propensity Score Model"
 author: "Julie Ghekas"
-date: "January 20, 2016"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 ---
 
 I am documenting the decisions, assumptions, and confidence in those decisions in replicating the analysis for Massachusetts presented in the Sommers et al paper.
 
-To begin, I read in my data from the CDC.
 
+Read in subsets of `pop` and `mort` data files (created by `mass_prep.Rmd`).
 ```{r}
-if (is.null(datadir)) #reproduce results from when below were hard-coded; see dot-Renviron-template.txt
-{
-datadir = "~/Downloads/" 
-mortdatadir = "~/Downloads/mort/"
-buffsize = 2e5
-}
-
-mort99=read.fwf(paste0(mortdatadir, 'MORT9913.txt'),width=c(2,3,4,1,1,2,4,3,4), buffersize=buffsize)
-colnames(mort99)=c('state','county','year','racesex','hisp','age','ICD10cause','cause','deaths')
-pop99=read.fwf(paste0(datadir, 'pop9913.txt'),width=c(2,3,4,1,1,rep(8,14),25,1), buffersize=buffsize)
-colnames(pop99)=c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
-arf<-read.csv(paste0(datadir, 'arfarfsixten.csv'),header=T)
-colnames(arf)<-c('state','county','med610','medinc10','medinc06','pov10','pov06','ins10','ins06','unemp10','unemp06')
-library(reshape2)
-library(car)
-library(RItools)
+stopifnot(file.exists(prepped_data_file <- paste0(datadir, "created/mass_prep.RData")))
+load(prepped_data_file)
 ```
 
-I then subset the data to include only the years I want for the Massachusetts replication, only counties, and add in a variable for an age group (simply the addition of two age groups).
-
-```{r}
-pop06=subset(pop99,pop99$year>=2001 & pop99$year<=2006)
-pop06=subset(pop06,pop06$type==3)
-pop06$a2034=pop06$a2024+pop06$a2534
-```
-
-The following section was added to provide a mortality rate for all years, to help with the analysis of the comparison post-treatment.
-
-```{r}
-popall=subset(pop99,pop99$type==3)
-popall$a2034=popall$a2024+popall$a2534
-```
 
 I then begin aggregating the data to accomplish the variables that I wish to have (in replication of the propensity score model discussed in Appendix Table 2).  
 
@@ -82,8 +54,6 @@ These counts are all for individuals who are between 20 and 64 years of age, as 
 
 
 ```{r}
-mort06=subset(mort99,mort99$year>=2001 & mort99$year<=2006)
-mort06=subset(mort06,mort06$age>=09 & mort06$age<=13)
 deaths=aggregate(deaths~county+state+year,sum,data=mort06)
 pop06$pops=pop06$a2024+pop06$a2534+pop06$a3544+pop06$a4554+pop06$a5564
 pops=aggregate(pops~county+state+year,sum,data=pop06)
@@ -96,7 +66,6 @@ colnames(totals)=c('state','county','mr01','mr02','mr03','mr04','mr05','mr06')
 This section is added below to be able to compare the outcomes amongst the groups
 
 ```{r}
-mortall=subset(mort99, mort99$age>=09 & mort99$age<=13)
 deathall=aggregate(deaths~county+state+year, sum, data=mortall)
 popall$pops=popall$a2024+popall$a2534+popall$a3544+popall$a4554+popall$a5564
 popall=aggregate(pops~county+state+year,sum,data=popall)
