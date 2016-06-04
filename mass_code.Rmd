@@ -12,6 +12,11 @@ Read in subsets of `pop` and `mort` data files (created by `mass_prep.Rmd`).
 ```{r}
 stopifnot(file.exists(prepped_data_file <- paste0(datadir, "created/mass_prep.RData")))
 load(prepped_data_file)
+library(reshape2)
+library(car)
+library(withr)
+with_libpaths("lib/", library(RItools), "prefix")
+
 ```
 
 
@@ -78,7 +83,13 @@ totalsall[is.na(totalsall)]=0
 
 Assumptions that I have made here: I assumed that this was general mortality.  I did not calculate the deaths amenable to health care rate, just the all told mortality rate.  I also assumed that the mortality rate only had individuals 20-64 considered.
 
-Here, I am going through and implementing the (modified) propensity score model, using only the variables that I have available to me directly from the CDC data, without using any other sources.  This relies on the removal of poverty rate, median household income, unemployment rate, and percent uninsured from the model.
+Here, I am going through and implementing the (modified) propensity
+score model, using only the variables that I have available to me
+directly from the CDC data, without using any other sources.  This
+relies on the removal of poverty rate, median household income,
+unemployment rate, and percent uninsured from the model.
+**BH**: Is this comment out of sync with code?  The next PS model
+below appears to have the named variables.
 
 ```{r}
 model2data=merge(ages,race,by=c('state','county'))
@@ -90,13 +101,19 @@ model2data$treat[model2data$state==25]=1
 model2data=merge(model2data,arf,by=c('state','county'))
 ```
 
-There are about 50 NAs in the model2data dataframe.  The way that the mortalities are recorded, to the best of my understanding, is as a count.  The mortality entry only occurs if at least one individual died of that cause within a given age group, racial characteristic, and gender.  I believe that if a death didn't occur within a given demographic, this would result in a count of NA within the aggregated data.  For some small counties, there may be year(s) without deaths.  So, for a year without deaths, the rate would not be calculable.  Based on this belief, I will record the mortality rate for these counties as 0, resulting in a complete dataframe.  
+There are about 50 NAs in the model2data dataframe, all arising from
+`totals`:
+```{r}
+sum(!complete.cases(model2data))
+all.equal(table(complete.cases(model2data)), table(complete.cases(totals)))
+```
+The way that the mortalities are recorded, to the best of my understanding, is as a count.  The mortality entry only occurs if at least one individual died of that cause within a given age group, racial characteristic, and gender.  I believe that if a death didn't occur within a given demographic, this would result in a count of NA within the aggregated data.  For some small counties, there may be year(s) without deaths.  So, for a year without deaths, the rate would not be calculable.  Based on this belief, I will record the mortality rate for these counties as 0, resulting in a complete dataframe.  
 
 ```{r}
 model2data[is.na(model2data)]=0
 model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+unemp06+pov06+ins06+medinc06,data=model2data,family=binomial(link='logit'))
 summary(model2)
-optmatch::boxplot.glm(model2)
+optmatch:::boxplot.glm(model2)
 ```
 
 This model predicts that for some counties, there is a probability of 0 that the county is in Massachusetts (the treatment group).  Below, I will explore the fitted values from this model.  The coefficients for this model do not appear to be consistent with those presented in Sommers' paper.  
