@@ -1,6 +1,6 @@
 ---
 title: "Massachusetts Propensity Score Model"
-author: "Julie Ghekas"
+author: "Julie Ghekas, Ben Hansen"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 ---
@@ -68,6 +68,31 @@ totals=dcast(data=total,state+county~year,value.var='mrate')
 colnames(totals)=c('state','county','mr01','mr02','mr03','mr04','mr05','mr06')
 ```
 
+The way that the mortalities are recorded is as a count.  The
+mortality entry only occurs if at least one individual died of that
+cause within a given age group, racial characteristic, and gender.  I
+believe that if a death didn't occur within a given demographic, this
+would result in a count of NA within the aggregated data.  For some
+small counties, there may be year(s) without deaths.   Based on this
+belief, I will record the mortality rate for these counties as 0,
+resulting in a complete dataframe.
+
+```{r}
+totals[is.na(totals)] = 0
+```
+
+
+
+Population counts are missing in some years (perhaps as a by-product
+of the county not having reported deaths in those years).  We'll use last
+observation carry forward.
+```{r}
+pops=dcast(data=total,state+county~year,value.var='pops')
+pops$pop06 <- apply(pops[ncol(pops):3L], 1, function(x) x[!is.na(x)][1])
+all.equal(pops[!is.na(pops$'2006'),'2006'],pops[!is.na(pops$'2006'),'pop06'])
+pops <- subset(pops, select=c(state,county,pop06))
+```
+
 
 Here, I am going through and implementing the (modified) propensity
 score model, using only the variables that I have available to me
@@ -82,23 +107,13 @@ model2data=merge(ages,race,by=c('state','county'))
 model2data=merge(model2data,sex,by=c('state','county'))
 model2data=merge(model2data,hisp,by=c('state','county'))
 model2data=merge(model2data,totals,by=c('state','county'))
+model2data=merge(model2data,pops,by=c('state','county'))
 model2data$treat=0
 model2data$treat[model2data$state==25]=1
 model2data=merge(model2data,arf,by=c('state','county'))
+
 ```
 
-There are about 50 NAs in the model2data dataframe, all arising from
-`totals`:
-```{r}
-sum(!complete.cases(model2data))
-sum(is.na(model2data))
-all.equal(sum(is.na(model2data)), sum(is.na(totals)))
-```
-The way that the mortalities are recorded, to the best of my understanding, is as a count.  The mortality entry only occurs if at least one individual died of that cause within a given age group, racial characteristic, and gender.  I believe that if a death didn't occur within a given demographic, this would result in a count of NA within the aggregated data.  For some small counties, there may be year(s) without deaths.  So, for a year without deaths, the rate would not be calculable.  Based on this belief, I will record the mortality rate for these counties as 0, resulting in a complete dataframe.  
-
-```{r}
-model2data[is.na(model2data)]=0
-```
 
 Here is the propensity model:
 ```{r}
@@ -137,8 +152,25 @@ with(subset(model2data, fitted(model2)>fit.q3), length(unique(state)))
 mass.study = subset(model2data, state==25 | fitted(model2)>fit.q3)
 xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+
              white+male+hisp+mr01+mr02+mr03+mr04+mr05+mr06,
-         data=mass.study,report=c('all'))
+         data=mass.study,report='all')
+
 ```
+
+
+Check balance using weighting for county population.
+```{r}
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+
+             white+male+hisp+mr01+mr02+mr03+mr04+mr05+mr06,
+         element.weights=pop06,data=mass.study,report='all')
+```
+
+That doesn't look so good -- but maybe it should be taken with a grain
+of salt. The following suggests something funny about the chi-square
+statistic:
+```{r}
+xBalance(treat~mr04+mr05,element.weights=pop06,data=mass.study,report='all')
+```
+
 
 ## First look at outcomes
 
