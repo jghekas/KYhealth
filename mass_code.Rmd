@@ -68,20 +68,6 @@ totals=dcast(data=total,state+county~year,value.var='mrate')
 colnames(totals)=c('state','county','mr01','mr02','mr03','mr04','mr05','mr06')
 ```
 
-This section is added below to be able to compare the outcomes amongst the groups
-
-```{r}
-deathall=aggregate(deaths~county+state+year, sum, data=mortall)
-popall$pops=popall$a2024+popall$a2534+popall$a3544+popall$a4554+popall$a5564
-popall=aggregate(pops~county+state+year,sum,data=popall)
-totalall<-merge(popall,deathall,by=c('year','state','county'))
-totalall$mrate=totalall$deaths/totalall$pops*100000
-totalsall=dcast(data=totalall,state+county~year,value.var='mrate')
-colnames(totalsall)=c('state','county','mr99','mr00','mr01','mr02','mr03','mr04','mr05','mr06','mr07','mr08','mr09','mr10','mr11','mr12','mr13')
-totalsall[is.na(totalsall)]=0
-```
-
-Assumptions that I have made here: I assumed that this was general mortality.  I did not calculate the deaths amenable to health care rate, just the all told mortality rate.  I also assumed that the mortality rate only had individuals 20-64 considered.
 
 Here, I am going through and implementing the (modified) propensity
 score model, using only the variables that I have available to me
@@ -105,13 +91,22 @@ There are about 50 NAs in the model2data dataframe, all arising from
 `totals`:
 ```{r}
 sum(!complete.cases(model2data))
-all.equal(table(complete.cases(model2data)), table(complete.cases(totals)))
+sum(is.na(model2data))
+all.equal(sum(is.na(model2data)), sum(is.na(totals)))
 ```
 The way that the mortalities are recorded, to the best of my understanding, is as a count.  The mortality entry only occurs if at least one individual died of that cause within a given age group, racial characteristic, and gender.  I believe that if a death didn't occur within a given demographic, this would result in a count of NA within the aggregated data.  For some small counties, there may be year(s) without deaths.  So, for a year without deaths, the rate would not be calculable.  Based on this belief, I will record the mortality rate for these counties as 0, resulting in a complete dataframe.  
 
 ```{r}
 model2data[is.na(model2data)]=0
-model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+unemp06+pov06+ins06+medinc06,data=model2data,family=binomial(link='logit'))
+```
+
+Here is the propensity model:
+```{r}
+model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+
+               mr01+mr02+mr03+mr04+mr05+mr06+
+                   unemp06+pov06+ins06+medinc06,
+    data=model2data,family=binomial(link='logit'))
+stopifnot(is.null(model2$na.action))
 summary(model2)
 optmatch:::boxplot.glm(model2)
 ```
@@ -121,10 +116,16 @@ This model predicts that for some counties, there is a probability of 0 that the
 ```{r}
 hist(fitted(model2),breaks=60)
 summary(fitted(model2))
-fitted(model2)[model2data$treat==1]
+table(model2data$treat,
+      cut(fitted(model2), quantile(fitted(model2),
+                                   probs=c(0,.5,.75,1)))
+      )
 ```
 
-Based on the above analysis, it appears as if one of the treated counties is between the 50th and 75th percentile, with a fitted value less than the mean.  (The mean is larger than Q3, which makes sense with the skewed right shape).  
+Based on the above analysis, it appears as if one of the treated
+counties is between the 50th and 75th percentile, with a fitted value
+less than the mean, and another one is less than the median.
+(The mean is larger than Q3, which makes sense with the skewed right shape).  
 
 ```{r}
 fit.q3=summary(fitted(model2))[5]
@@ -133,13 +134,32 @@ length(unique(model2data$state[cont.count]))
 ```
 
 ```{r}
-mass.treat=subset(model2data,model2data$state==25)
-mass.control=model2data[cont.count,]
-mass.control=subset(mass.control,mass.control$state!=25)
-mass.study=rbind(mass.treat,mass.control)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr01+mr02+mr03+mr04+mr05+mr06, data=mass.study,report=c('all'))
+mass.study = subset(model2data, state==25 | fitted(model2)>fit.q3)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+
+             white+male+hisp+mr01+mr02+mr03+mr04+mr05+mr06,
+         data=mass.study,report=c('all'))
 ```
 
+## First look at outcomes
+
+This section is added below to be able to compare the outcomes amongst the groups
+
+```{r}
+deathall=aggregate(deaths~county+state+year, sum, data=mortall)
+popall$pops=popall$a2024+popall$a2534+popall$a3544+popall$a4554+popall$a5564
+popall=aggregate(pops~county+state+year,sum,data=popall)
+totalall<-merge(popall,deathall,by=c('year','state','county'))
+totalall$mrate=totalall$deaths/totalall$pops*100000
+totalsall=dcast(data=totalall,state+county~year,value.var='mrate')
+colnames(totalsall)=c('state','county','mr99','mr00','mr01','mr02','mr03','mr04','mr05','mr06','mr07','mr08','mr09','mr10','mr11','mr12','mr13')
+sapply(totalsall[1:2], function(x) any(is.na(x)) )
+totalsall[is.na(totalsall)]=0
+```
+
+Assumptions that I have made here: I assumed that this was general mortality.  I did not calculate the deaths amenable to health care rate, just the all told mortality rate.  I also assumed that the mortality rate only had individuals 20-64 considered.
+
+
+This chunk aims to compare outcomes between the groups.
 
 ```{r}
 mass.control.mort<-totalsall[cont.count,]
@@ -150,3 +170,12 @@ mass.mort.study$treat=0
 mass.mort.study$treat[mass.mort.study$state==25]=1
 xBalance(treat~mr07+mr08+mr09+mr10+mr11+mr12+mr13,data=mass.mort.study,report=c('all'))
 ```
+
+...but note that there's a premise here that `model2data` is aligned
+with `totalsall`, and that premise turns out to be mistaken:
+```{r}
+nrow(model2data)
+nrow(totalsall)
+```
+
+So the results should be taken with a grain of salt.
