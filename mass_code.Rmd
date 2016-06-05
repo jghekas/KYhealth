@@ -129,8 +129,8 @@ less than the mean, and another one is less than the median.
 
 ```{r}
 fit.q3=summary(fitted(model2))[5]
-cont.count=which(fitted(model2)>fit.q3)
-length(unique(model2data$state[cont.count]))
+with(subset(model2data, fitted(model2)>fit.q3), length(unique(state)))
+
 ```
 
 ```{r}
@@ -162,20 +162,12 @@ Assumptions that I have made here: I assumed that this was general mortality.  I
 This chunk aims to compare outcomes between the groups.
 
 ```{r}
-mass.control.mort<-totalsall[cont.count,]
-mass.control.mort<-subset(mass.control.mort,mass.control.mort$state!=25)
-mass.treat.mort<-subset(totalsall,totalsall$state==25)
-mass.mort.study<-rbind(mass.treat.mort,mass.control.mort)
-mass.mort.study$treat=0
-mass.mort.study$treat[mass.mort.study$state==25]=1
-xBalance(treat~mr07+mr08+mr09+mr10+mr11+mr12+mr13,data=mass.mort.study,report=c('all'))
+mass.mort.study <- merge(model2data,
+                         subset(totalsall, select=c(state,county,mr07:mr13)),
+                         by =c('state', 'county')
+                         )
+c(nrow(model2data), nrow(mass.mort.study))
+mass.mort.study = subset(mass.mort.study, state==25 | fitted(model2)>fit.q3)
+xBalance(treat~mr07+mr08+mr09+mr10+mr11+mr12+mr13,
+         data=mass.mort.study, report=c('all'))
 ```
-
-...but note that there's a premise here that `model2data` is aligned
-with `totalsall`, and that premise turns out to be mistaken:
-```{r}
-nrow(model2data)
-nrow(totalsall)
-```
-
-So the results should be taken with a grain of salt.
