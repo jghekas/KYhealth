@@ -54,9 +54,9 @@ systems,
 library(devtools)
 library(withr)
 LIB <- with(R.version,
-            paste("../lib", platform,
+            paste0("../lib/", platform, "-library/",
                   paste0(major, ".", substr(minor, 1,1)),
-                  sep="/")
+                  )
             )
 with_libpaths(LIB, install("./RItools"))
 ```
