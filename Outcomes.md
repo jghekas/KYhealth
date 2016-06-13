@@ -6,19 +6,19 @@ Prior to this, different matching schemes were evaluated for balance.  I was att
 
 A procedure for the basic outcome analysis follows:
 
-- [ ]	Examine graphically how mortality rate and insurance rates change by year within the control group (unweighted and potentially weighted by fm weighting), treatment group, and nationally.
+- [x]	Examine graphically how mortality rate and insurance rates change by year within the control group (unweighted and potentially weighted by fm weighting), treatment group, and nationally.
 
-- [ ]	Fit five OLS models to predict the mortality rate for each of the five outcome years (2006-2010), using baseline (2000-2005) and treatment variables as the predictors
+- [x]	Fit five OLS models to predict the mortality rate for each of the five outcome years (2006-2010), using baseline (2000-2005) and treatment variables as the predictors
 
-- [ ]	Variable selection for the OLS models; variables of interest are the matching groups as dummy variables, treatment variable as dummy variable, and baseline variables.  Treatment variable must be included.  Selected variables should be consistent for all models (at least within a state, preferred for all).
+- [x]	Variable selection for the OLS models; variables of interest are the matching groups as dummy variables, treatment variable as dummy variable, and baseline variables.  Treatment variable must be included.  Selected variables should be consistent for all models (at least within a state, preferred for all).
 
-- [ ]	Examine the coefficient of the treatment variable.  Look for any patterns through the years.  Do these patterns follow what we would expect if the act were effective?  If a clear pattern exists, look into methods to limit the coefficient space in a multivariate regression.  
+- [x]	Examine the coefficient of the treatment variable.  Look for any patterns through the years.  Do these patterns follow what we would expect if the act were effective?  If a clear pattern exists, look into methods to limit the coefficient space in a multivariate regression.  
 
-- [ ]	Explore the same models of the last three parts using generalized estimating equations (geepack).  Compare with the OLS versions of the  models.
+- [x]	Explore the same models of the last three parts using generalized estimating equations (geepack).  Compare with the OLS versions of the  models.
 
-- [ ]	Variable selection process for the GEE models, similar to OLS.
+- [x]	Variable selection process for the GEE models, similar to OLS.
 
-- [ ]	Examine how the coefficient of the treatment variable changes throughout the models.  Explore similar questions as before.  Look into fitting a multivariate model with multiple outcome variables.
+- [x]	Examine how the coefficient of the treatment variable changes throughout the models.  Explore similar questions as before.  Look into fitting a multivariate model with multiple outcome variables.
 
 
 

@@ -155,5 +155,5 @@ mass.treat.mort<-subset(totalsall,totalsall$state==25)
 mass.mort.study<-rbind(mass.treat.mort,mass.control.mort)
 mass.mort.study$treat=0
 mass.mort.study$treat[mass.mort.study$state==25]=1
-xBalance(treat~mr07+mr08+mr09+mr10+mr11+mr12+mr13,data=mass.mort.study,report=c('all'))
+#xBalance(treat~mr07+mr08+mr09+mr10+mr11+mr12+mr13,data=mass.mort.study,report=c('all'))
 ```
