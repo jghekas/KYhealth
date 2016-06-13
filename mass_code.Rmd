@@ -15,7 +15,13 @@ load(prepped_data_file)
 library(reshape2)
 library(car)
 library(withr)
-with_libpaths("lib/", library(RItools), "prefix")
+stopifnot(file.exists("./lib"))
+if ( file.exists(paste0("./lib/", R.version[['platform']], "-library") ) )
+{
+  with_libpaths(with(R.version, paste0("./lib/", platform, "-library/", major, ".", substr(minor, 1,1))),
+		library(RItools)
+		)
+} else with_libpaths("lib/", library(RItools))
 
 ```
 
