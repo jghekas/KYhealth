@@ -32,8 +32,10 @@ A list of basic analytical steps are:
 Currently, the files within the github site are:
 allhealth.R
 arfarfsixteen.csv
+arf08vars.csv
+arf12vars.csv
 ky_code.Rmd
-Mass Table 2.Rmd
+Mass_Table_2.Rmd
 mass_code.Rmd
 massrep.Rmd
 Outcomes.md
@@ -44,7 +46,13 @@ allhealth.R
 contains the code used for the setup for all three states.  Code at the beginning of this document provides the process to create the data frames used throughout the analysis.  I have assumed at the beginning of the remaining code that the data frames have been created and begin by loading in the appropriately formatted code.  The paths to the downloaded data from the CDC and the ARF variables will need to be changed on a different computer.
 
 arfarfsixteen.csv 
-contains the ARF variables that are merged into the data frame in allhealth.R.
+contains the ARF variables that are merged into the data frame in allhealth.R (for matching for 2006 and 2010)
+
+arf08vars.csv
+contains the variables collected from the ARF available from 2008, which includes some years prior to 2008.
+
+arf12vars.csv
+contains the variables collected from the ARF available from 2012, which includes some years prior to 2012.
 
 ky_code.Rmd
 contains different matching schemes.  Balance assessments on the matching schemes were used for comparison.  Overall, full matching seemed to perform best
