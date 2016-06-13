@@ -164,11 +164,22 @@ xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+
          element.weights=pop06,data=mass.study,report='all')
 ```
 
-That doesn't look so good -- but maybe it should be taken with a grain
-of salt. The following suggests something funny about the chi-square
-statistic:
+That doesn't look as good. 
+
+The large chi-square value seems out of line w/ 
+per-variable imbalance stats, but that can readily happen when the covariates
+are highly correlated, as they're likely to be given the population weighting:
+see discussion of [RItools issue 75](https://github.com/markmfredrickson/RItools/issues/75).  
+Still, the population weighting can create outliers
+and thus undermine the large-sample basis for the hypothesis tests. That effect is 
+limited by rank-transforming the covariates, as a part of the hypothesis test:
+
 ```{r}
-xBalance(treat~mr04+mr05,element.weights=pop06,data=mass.study,report='all')
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+
+             white+male+hisp+mr01+mr02+mr03+mr04+mr05+mr06,
+         element.weights=pop06,data=mass.study,report='all',
+	 post.alignment.transform=rank)
+
 ```
 
 
