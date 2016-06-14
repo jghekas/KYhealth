@@ -5,7 +5,7 @@
 datadir = "/Volumes/data/nchs-CMF1989-2013/"
 
 # some scripts use a separate subdirectory for the mortality data.
-mortdir = "/Volumes/data/nchs-CMF1989-2013/"
+mortdatadir = "/Volumes/data/nchs-CMF1989-2013/"
 
 # constant affecting how very large files are read in.  Machines w/ more memory
 # can take larger values
