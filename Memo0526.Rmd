@@ -1,0 +1,43 @@
+---
+title: "Memo 5/27"
+author: "Julie Ghekas"
+date: "May 26, 2016"
+output: html_document
+---
+
+I am outlining the beginning of the outcome analysis that I have performed for Massachusetts and started to perform for Kentucky and Tennessee.  Before proceeding with Kentucky and Tennessee, I'd like to check for agreement.
+
+#Variables
+
+Variables were calculated fromm the mortality data, population data, and from the Area Resource File (as provided through Penn State's sodapop).  The poverty rate, uninsurance rate, median household income, and unemployment rate were all obtained from these files and were year-specific.  The uninsurance rate was only available for 1990, 2000, and 2005 and after.  This limited the scope that insurance rate played in the analysis for 2001-2004.  The calculation of these variables can be found in "allhealth.R".
+
+#Replicating Table 2
+
+To begin with, I will discuss my attempts to replicate Sommers, et al. analysis.  When trying to replicate the values reported in Table 2 for Massachusetts, I examined if I could calculate the same values.  I attempted using years 2001-2005, 2001-2006, 2005, and 2006, and using population weighted and unweighted averaging over counties.  With each of these options, I could calculate values that were similar but not exact to what was reported in the paper.  I ultimately opted for using 2001-2006 unweighted averages over counties in the following analysis.  The code for this attempt can be found in the file "Mass Table 2.Rmd".
+
+#Propensity Score Fitting
+
+Variables describing the population were used in the identification of a control group.  Following the Sommers method, I calculated propensity scores for all of the counties.  For fitting the propensity score, I used an unweighted glm from a binomial family and a logit link.  This is different from what was descriptively reported in the Sommers paper, although the log odds ratio that I calculate are similar to those reported in the supplement.  I was able to fit a population-weighted glm as described in the paper.  I found that the calculated ratios were not close to those reported in the paper and that the balance assessment (to be discussed next) suffered relative to the option selected. 
+
+#Balance in Massachusetts
+
+As we discussed previously, I assessed balance using the xBalance function with R.  This method differs from the method performed in Sommers.  The advantage of this balance assessment is that it takes into account all of the variables being compared into one statistical test.  The chi-squared balance assessment avoids multiple testing, an improvement over testing each variable separately.  The balance implemented was population-weighted for the population of adults 20-64 within each county.  To the best I can tell, the balance was population-weighted in Sommers.
+
+For the balance assessment, I was able to acheive similar but not exact results in terms of how the control and treated groups related to each other based on the top quartile of the potential control group following the Sommers, et al. paper.  However, the overall balance of that test considering all variables was fairly poor.  Adding in the ARF variables (unemployment rate, median household income, poverty rate, and insurance rate) reduces the overall balance quite a bit.
+
+However, the balance assessment for the top quartile control group indicated that the balance between the two groups was significantly different.  As we had discussed previously, this led to performing a full matching retaining 1/4 of the potential control group in keeping with the Sommers method as much as possible.  Full matching is an optimal method of creating groups of control and treatment counties.  In this case, the groups were formed based on the propensity scores.  
+
+The weighted balance assessed using the full matching groups indicated very close balance between the two groups.  This same pattern holds when the same procedure is applying to Kentucky and Tennnessee.
+
+#Outcomes
+
+I attempted to replicate the negative binomial model that Sommers described for the outcome as best I could.  The results obtained were opposite those reported in the paper.  I decided to pursue a different avenue.  A two-step model was fit that should take into account some of the correlation built into the data.  The model selected used all of the baseline variables used to fit the propensity score (although for 2005) and additional ARF variables for previous years, a treatment variable, and variables for each of the full matching groups.  The coefficient of interest is the treatment variable coefficient, which tells us the effect of the treatment adjusting for the other variables in the model.  The mortality rate of the outcome years (2006-2010) were predicted.
+
+For Massachusetts, I found that the treatment coefficient started positively valued and move mostly in a negative direction until it became negatively valued.  This indicates that within the full matching groups and adjusting for all other variables, on average, the mortality rate in Massachusetts counties began higher and moved lower.  This would indicate that the mortality rate in Massachusetts counties were lower than in the control counties, especially in 2009 and 2010.  It may take a little while for the changes to become effective both in implementation and for effects to be seen, so this would make sense.  The coefficients, however, were not consistently significant.
+
+Looking forward, this may indicate that there is not enough data for Kentucky and Tennessee in terms of years post-treatment.  There is also the potential issue with Tennessee that the changes implemented in the control states (those that adopted changes) were more gradual and later than our treatment year, which could further reduce our results.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+

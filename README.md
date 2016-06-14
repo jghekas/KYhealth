@@ -16,17 +16,61 @@ A list of basic analytical steps are:
 
 - [x]	Apply similar analyses as before to Tennessee, first draft
 
-- [ ]	Collaborator feedback on PS and post-matching analysis options for KY 
+- [x]	Collaborator feedback on PS and post-matching analysis options for KY 
 
-<!--- to them by Tuesday, March 29 --->
-- [ ]	Collaborator feedback on PS and post-matching analysis options for TN 
+- [x]	Collaborator feedback on PS and post-matching analysis options for TN 
 
-<!--- to them by Tuesday, March 29 --->
-- [ ]	Outcome analysis between control and treatment Kentucky groups 
+- [x]   Decision on matching and balance schemes to be pursued
 
-<!--- Wednesday, March 30 --->
+- [ ]	Outcome analysis between control and treatment Massachusetts groups 
+
 - [ ]	Collaborators' thoughts on follow up analyses to be performed 
 
-<!--- Friday, April 1 --->
 
 
+
+Currently, the files within the github site are:
+allhealth.R
+arfarfsixteen.csv
+arf08vars.csv
+arf12vars.csv
+ky_code.Rmd
+Mass_Table_2.Rmd
+mass_code.Rmd
+massrep.Rmd
+Outcomes.md
+README.md
+tn_code.Rmd
+
+allhealth.R 
+contains the code used for the setup for all three states.  Code at the beginning of this document provides the process to create the data frames used throughout the analysis.  I have assumed at the beginning of the remaining code that the data frames have been created and begin by loading in the appropriately formatted code.  The paths to the downloaded data from the CDC and the ARF variables will need to be changed on a different computer.
+
+arfarfsixteen.csv 
+contains the ARF variables that are merged into the data frame in allhealth.R (for matching for 2006 and 2010)
+
+arf08vars.csv
+contains the variables collected from the ARF available from 2008, which includes some years prior to 2008.
+
+arf12vars.csv
+contains the variables collected from the ARF available from 2012, which includes some years prior to 2012.
+
+ky_code.Rmd
+contains different matching schemes.  Balance assessments on the matching schemes were used for comparison.  Overall, full matching seemed to perform best
+
+Mass Table 2.Rmd
+contains an attempt to calculate the numbers found in Table 2.  Weighted and unweighted averages were calculated for 2005, 2006, 2001-2005, and 2001-2006.  
+
+mass_code.Rmd
+contains the code used to create the data frame for Massachusetts (along with assumptions built into the calculations).  It also contains a balance assessment for a control group consisting of the counties within the top quartile of propensity scores, following Sommers, et al.
+
+massrep.Rmd
+contains an attempt to directly replicate the analysis performed by Sommers, et al.  The contents of Mass Table 2.Rmd supplement this material.  This starts after the setup presented in allhealth.R.  Balance assessments with and without population weighting were examined for 2005 and 2006 treated as the baseline year.   
+
+Outcomes.md
+contains steps to be followed in the outcome analysis, written before beginning the outcome analysis.  This was performed first for Massachusetts, then followed by Kentucky and Tennessee.
+
+README.md
+contains the basic analysis steps and a list of the files with brief descriptions on the github site.
+
+tn_code.Rmd
+contains the code to generate the data frame for Tennessee.  It also includes a handful of matching schemes (top quartile and full matching) along with their balance assessments.
