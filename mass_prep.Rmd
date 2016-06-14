@@ -48,5 +48,21 @@ mortall=subset(mort99, mort99$age>=09 & mort99$age<=13)
 As that was the last use of `pop99` in this script:
 ```{r}
 rm(pop99,mort99)
-save(popall,mortall,pop06,mort06,arf, file=paste0(datadir, "created/mass_prep.RData"))
 ```
+
+Save the results of this script, along with a record of the state of
+this script on the local file server at the time that the save was
+made.
+
+```{r}
+mass_prep_git_state <- list()
+mass_prep_git_state$latest_commit <- system("git log -n 1 --pretty=format:%h -- mass_prep.Rmd",
+                                  intern=TRUE)
+mass_prep_git_state$diff_not_staged <- system("git diff -- mass_prep.Rmd",
+                                             intern=TRUE)
+mass_prep_git_state$diff_staged <- system("git diff --staged mass_prep.Rmd",
+                                             intern=TRUE)
+save(popall,mortall,pop06,mort06,arf,mass_prep_git_state,
+     file=paste0(datadir, "created/mass_prep.RData"))
+```
+ 
