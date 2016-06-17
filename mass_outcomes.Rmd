@@ -93,6 +93,44 @@ massgee = geese(deaths/pops~a2034+a3544+a4554+black+otherrace+female+hisp+treat+
 summary(mnb2)
 ```
 
+Below are visualizations for Massachusetts, the control group, and all counties outside
+of Massachusetts for a handful of variables, including insurance and mortality.
+
+```{r}
+#I need to perform weighted means for the control group
+mass.group = cbind(deathdata6, fm2)
+mass.group = subset(mass.group, !is.na(fm2))
+all.mort = apply(deathdata6[,c(14:19,69:75)],2,mean)
+cont.mort = apply(subset(mass.group,mass.group$treat==0)[,c(14:19,69:75)],2,mean)
+mass.mort = apply(subset(deathdata6,deathdata6$treat==1)[,c(14:19,69:75)],2,mean)
+allm.mort = apply(deathdata6[,c(14:19,69:75)],2,median)
+contm.mort = apply(subset(mass.group,mass.group$treat==0)[,c(14:19,69:75)],2,median)
+massm.mort = apply(subset(deathdata6,deathdata6$treat==1)[,c(14:19,69:75)],2,median)
+
+plot(c(1:13),mass.mort,ylim=c(280,440),type='l',col='red')
+lines(c(1:13),cont.mort,col='purple')
+lines(c(1:13),all.mort,col='blue')
+lines(c(1:13),massm.mort,type='l',col='red',lty=2)
+lines(c(1:13),allm.mort,type='l',col='blue',lty=2)
+lines(c(1:13),contm.mort,type='l',col='purple',lty=2)
+all.ins = apply(deathdata6[,c(46,27,64,63,62,26)],2,mean)
+cont.ins = apply(subset(mass.group,mass.group$treat==0)[,c(46,27,64,63,62,26)],2,mean)
+mass.ins = apply(subset(deathdata6,deathdata6$treat==1)[,c(46,27,64,63,62,26)],2,mean)
+allm.ins = apply(deathdata6[,c(46,27,64,63,62,26)],2,median)
+contm.ins = apply(subset(mass.group,mass.group$treat==0)[,c(46,27,64,63,62,26)],2,median)
+massm.ins = apply(subset(deathdata6,deathdata6$treat==1)[,c(46,27,64,63,62,26)],2,median)
+plot(c(5:10),mass.ins,ylim=c(5,23),type='l',col='red')
+lines(c(5:10),cont.ins,col='purple')
+lines(c(5:10),all.ins,col='blue')
+lines(c(5:10),massm.ins,col='red',lty=2)
+lines(c(5:10),contm.ins,col='purple',lty=2)
+lines(c(5:10),allm.ins,col='blue',lty=2)
+
+```
+
+
+The ARF data appear to have no missing variables.  In fact, 0s have been imputed for missing variables.  In most cases, it appears as if data are missing for the county as a whole, not for a specific year.  This will need to be addressed.
+
 As a double check of the strata command within the geese function:
 ```{r}
 ab = matrix(rnorm(500),nrow=100,ncol=5)
