@@ -1,0 +1,125 @@
+---
+title: "Massachusetts Outcome Analysis Exploration"
+author: "Julie Ghekas"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+Outcome analysis is performed here for Massachusetts.  The matching scheme that we 
+selected used an unweighted glm to generate the propensity scores, full matching 
+retaining 1/4 of the potential control counties, and a population-weighted balance 
+assessment.  The groups formed from this procedure will function as the two groups to be 
+compared to assess if the outcomes are different.  The full pool of potential 
+comparisons, i.e. all counties not in Massachusetts, may be used at various points in 
+time, but these are not the primary comparisons of interest.
+
+```{r}
+setwd('~')
+library(reshape2)
+library(car)
+library(RItools)
+library(optmatch)
+library(brglm)
+library(MASS)
+library(geepack)
+
+load('pop99.Rdata')
+load('mort99.Rdata')
+load('model2data.Rdata')
+model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+
+             pov06+medinc06+unemp06+ins06,data=model2data,family=binomial(link='logit'))
+fm2<-fullmatch(model2,data=model2data,omit.fraction=3/4)
+model2fit = cbind(model2data, fm2)
+model2fit = model2fit[,c(1,2,31)]
+
+popyr = subset(pop99, pop99$year>=2001)
+popyr = subset(popyr, popyr$type==3)
+popyr$a2034 = popyr$a2024 + popyr$a2534
+popyr$pops = popyr$a2034 + popyr$a3544 + popyr$a4554 + popyr$a5564
+popsyr = aggregate(pops~county+state+year, sum, data=popyr)
+
+ageyr = aggregate(cbind(a2034, a3544, a4554, a5564)~county+state+year, sum, data=popyr)
+ageyr = cbind(ageyr[,1:3],100*t(apply(ageyr[,4:7],1,prop.table)))
+
+rsyr = aggregate(cbind(count=a2034+a3544+a4554+a5564)~racesex+county+state+year,sum,
+                 data=popyr)
+ryr = rsyr
+ryr$race = recode(ryr$racesex, "1:2=1; 3:4=2; 5:8=3")
+ryr$race[ryr$race==1] = 'white'
+ryr$race[ryr$race==2] = 'black'
+ryr$race[ryr$race==3] = 'otherrace'
+racesyr = aggregate(count~race+county+state+year, sum, data=ryr)
+racesyr = dcast(data=racesyr, state+county+year~race)
+raceyr = cbind(racesyr[,1:3],100*t(apply(racesyr[,4:6],1,prop.table)))
+
+syr = rsyr
+syr$sex = recode(syr$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
+syr$sex[syr$sex==1]='male'
+syr$sex[syr$sex==2]='female'
+sexesyr = aggregate(count~sex+county+state+year, sum, data=syr)
+sexesyr = dcast(data=sexesyr, state+county+year~sex)
+sexyr = cbind(sexesyr[,1:3], 100*t(apply(sexesyr[,4:5],1,prop.table)))
+
+hispyr = aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state+year, sum, 
+                   data=popyr)
+hispyr$hisp = recode(hispyr$hisp, '2=1;1=2;9=2')
+hispyr$hisp[hispyr$hisp==1] = 'hisp'
+hispyr$hisp[hispyr$hisp==2] = 'nothisp'
+hispsyr = aggregate(count~hisp+county+state+year, sum, data=hispyr)
+hispsyr = dcast(data=hispsyr, state+county+year~hisp)
+hispyr = cbind(hispsyr[,1:3],100*t(apply(hispsyr[,4:5],1,prop.table)))
+
+mortyr = subset(mort99, mort99$year>=2001)
+mortyr = subset(mortyr, mortyr$age>=09 & mortyr$age<=13)
+deathsyr = aggregate(deaths~county+state+year, sum, data=mortyr)
+
+yeardata = merge(deathsyr, popsyr, by=c('state','county','year'))
+yeardata = merge(yeardata, ageyr, by=c('state','county','year'))
+yeardata = merge(yeardata, raceyr, by=c('state','county','year'))
+yeardata = merge(yeardata, sexyr, by=c('state','county','year'))
+yeardata = merge(yeardata, hispyr, by=c('state','county','year'))
+yeardata$treat = 0
+yeardata$treat[yeardata$state==25 & yeardata$year>=2006] = 1
+yeardata$idvar = paste(yeardata$state, yeardata$county, sep=',')
+
+
+year.group = merge(yeardata, model2fit, by=c('state','county'), all=T)
+year.group = year.group[order(year.group$state, year.group$county, year.group$year),]
+year.group = subset(year.group, !is.na(year.group$fm2))
+year.group$idvar = as.factor(year.group$idvar)
+
+massgee = geese(deaths/pops~a2034+a3544+a4554+black+otherrace+female+hisp+treat+
+                  strata(fm2), id=idvar, family=gaussian, data=year.group, waves=year)
+summary(mnb2)
+```
+
+As a double check of the strata command within the geese function:
+```{r}
+ab = matrix(rnorm(500),nrow=100,ncol=5)
+ab = as.data.frame(ab)
+idvar = c(rep(1,10),rep(2,10),rep(3,10),rep(4,10),rep(5,10),rep(6,10),rep(7,10),rep(8,10),rep(9,10),rep(10,10))
+ce = c(rep('1.1',5), rep('1.2',6), rep('1.3',7),rep('1.4',8),rep('1.5',9),rep('1.6',10),rep('1.7',11),rep('1.8',12),rep('1.9',13),rep('1.10',14),rep('1.11',5))
+ce = as.factor(ce)
+fg = matrix(0,nrow=100,ncol=11)
+fg[c(1:5),1] = 1
+fg[c(6:11),2] = 1
+fg[c(12:18),3] = 1
+fg[c(19:26),4] = 1
+fg[c(27:35),5] = 1
+fg[c(36:45),6] = 1
+fg[c(46:56),7] = 1
+fg[c(57:68),8] = 1
+fg[c(69:81),9] = 1
+fg[c(82:95),10] = 1
+fg[c(96:100),11] = 1
+colnames(ab) = c('a1','b2','c3','d4','e5')
+colnames(fg) = c('s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11')
+ab1 = cbind(ab,ce,idvar)
+ab2 = cbind(ab,fg,idvar)
+
+
+m11 = geese(a1~b2+c3+d4+e5+strata(ce),data=ab1, id=idvar)
+m12 = geese(a1~b2+c3+d4+e5+s2+s3+s4+s5+s6+s7+s8+s9+s10+s11, id=idvar, data=ab2)
+summary(m11)
+summary(m12)
+```
