@@ -32,29 +32,22 @@ A list of basic analytical steps are:
 Currently, the files within the github site are:
 
 
-Read me and outlining files:
-
+Read me and outlining files: 
 README.md, Outcomes.md
 
-
 ARF variable files:
-
 arfarfsixten.csv for 2006 and 2010, arf08vars.csv for years prior to 2009, arf12vars.csv for years prior to 2012
 
-
 Prep files:
-
 mass_prep.Rmd, src, Rprofile-env-vars-template.txt
 
-
 Matching scheme files:
-
 mass_code.Rmd, ky_code.Rmd, tn_code.Rmd
 
-
 Sommers direct replication files:
-
 mass_Table_2.Rmd, massrep.Rmd
 
+Outcome analysis:
+mass_outcomes.Rmd
 
 allhealth.R contains the setup of the data frames as well as some exploration (mostly visual) of outcomes.
