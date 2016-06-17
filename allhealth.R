@@ -5,6 +5,7 @@ library(car)
 library(RItools)
 library(optmatch)
 library(brglm)
+library(MASS)
 setwd('~')
 
 ## To make the saved datasets:
@@ -172,7 +173,33 @@ load('model2data.Rdata')
 load('model3data.Rdata')
 load('model4data.Rdata')
 
-model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov06+medinc06+unemp06+ins06,data=model2data,family=binomial(link='logit'))
+arfins = read.csv('~/Downloads/arfinsur.csv',header=T)
+colnames(arfins) = c('state','county','ins10a','ins06a')
+modela2data = merge(model2data,arfins, by=c('state','county'))
+model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov06+medinc06+unemp06+ins06a,data=modela2data,family=binomial(link='logit'))
+fit=fitted(model2)
+model2dat=cbind(modela2data,fit)
+men.treat=subset(model2dat,model2dat$treat==1)
+men.control=subset(model2dat,model2dat$treat==0)
+top4=summary(model2dat$fit)[5]
+men.control=subset(men.control,men.control$treat!=1)
+men.control=subset(men.control, men.control$fit>top4)
+men.study=rbind(men.treat,men.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+ins06a, data=men.studya,report=c('z.scores','chisquare.test','p.value'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+ins06a, element.weights=pops, data=men.study,report=c('z.scores','chisquare.test','p.value'))
+mean(men.treat$white)
+mean(men.control$white)
+
+
+men.study.out = merge(men.study, totals, by=c('state','county'), all.x=T)
+men.study.out = men.study.out[complete.cases(men.study.out),]
+#creating differences-in-differences
+men.study.out$mr07 = men.study.out$mr07 - men.study.out$mr06.y
+men.study.out$mr08 = men.study.out$mr08 - men.study.out$mr06.y
+men.study.out$mr09 = men.study.out$mr09 - men.study.out$mr06.y
+men.study.out$mr10 = men.study.out$mr10 - men.study.out$mr06.y
+
+xBalance(treat~mr07+mr08+mr09+mr10,element.weights=pops,data=men.study.out,report=c('z.scores','p.value','chisquare.test'))
 
 
 
@@ -190,8 +217,59 @@ deathdata = merge(popa, morta, by=c('state','county','year','racesex','hisp','ag
 deathdata[is.na(deathdata)]=0
 deathdata$treat=0
 deathdata$treat[deathdata$state==25 & deathdata$year>2006]=1
+deathdata = subset(deathdata, deathdata$count>0)
+deathdata = deathdata[-which(deathdata$deaths/deathdata$count>1),]
+#there were 8 counties that had a death count higher than the population count.  These all had counts of 1 and deaths of 2 or 3.
+deathdata$racesex = as.factor(deathdata$racesex)
+deathdata$state = as.factor(deathdata$state)
+deathdata$year = as.factor(deathdata$year)
 
-model5 = glm(deaths~state+year+treat+racesex+hisp+age,data=deathdata, family=quasibinomial(link='log'),weights=count)
+arf08 = read.csv('~/Downloads/arf08vars.csv',header=T)
+arf12 = read.csv('~/Downloads/arf12vars.csv',header=T)
+colnames(arf08) = c('state','county','inc07','inc06','inc05','inc04','inc03','inc02','inc01','inc00',
+                    'pov07','pov06','pov05','pov04','pov03','pov02','pov01','pov00',
+                    'ins05','emp07','emp06','emp05','emp04','emp03','emp02','emp01','emp00')
+colnames(arf12) = c('state','county','inc11','inc10','inc09','inc08','inc07','inc06','inc05',
+                    'pov11','pov10','pov09','pov08','pov07','pov06','pov05','ins10','ins09','ins08',
+                    'ins07','ins06','emp11','emp10','emp09','emp08','mep07','emp06','emp05')
+arf12 = arf12[,-c(7,8,9,14,15,16,26,27,28)]
+arfnb = merge(arf08, arf12, by=c('state','county'))
+arfnb1 = arfnb
+arfnb = melt(arfnb, id=c('state','county'))
+head(arfnb)
+y = data.frame(arfvar=substr(arfnb$variable, 1,3), year=as.numeric(substr(arfnb$variable,4,5)))
+arfnb = cbind(arfnb, y)
+head(arfnb)
+arfnb$year=recode(arfnb$year, "7=2007;0=2000; 1=2001; 2=2002; 3=2003; 4=2004; 5=2005; 6=2006; 8=2008; 9=2009; 10=2010; 11=2011")
+arfnb = arfnb[,-3]
+arfnb = dcast(data=arfnb, state+county+year~arfvar)
+
+deathdata1 = merge(deathdata, arfnb, by=c('state','county','year'))
+deathdata1 = subset(deathdata1,deathdata1$year!=1999 & deathdata1$year!=2000 & deathdata1$year!=2011 & deathdata1$year!=2012 & deathdata1$year!=2013)
+
+
+
+model5 = glm(deaths/count~state+year+treat+racesex+hisp+age+emp+inc+pov,data=deathdata1,weights=count,family=binomial(link=log))
+summary(model5)
+
+
+
+mass.ins = subset(arfnb1, arfnb1$state==25)
+mass.ins = mass.ins[,c(1,2,19,36:40)]
+mass.ins = apply(mass.ins, 2, mean)
+mass.ins = mass.ins[c(3,8,7,6,5,4)]
+nonmass.ins = subset(arfnb1, arfnb1$state!=25)
+nonmass.ins = nonmass.ins[,c(1,2,19,36:40)]
+nonmass.ins = apply(nonmass.ins, 2, mean)
+nonmass.ins = nonmass.ins[c(3,8,7,6,5,4)]
+nonmass.con.ins = merge(arfnb1, men.control, by=c('state','county'))
+nonmass.con.ins = nonmass.con.ins[,c(1,2,19,36:40)]
+nonmass.con.ins = apply(nonmass.con.ins,2,mean)
+nonmass.con.ins = nonmass.con.ins[c(3,8,7,6,5,4)]
+plot(x=c(5:10),mass.ins,type='l',col='red',ylim=c(5,22))
+lines(x=c(5:10),nonmass.ins,col='blue')
+lines(x=c(5:10),nonmass.con.ins,col='purple')
+
 
 
 
