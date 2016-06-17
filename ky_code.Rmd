@@ -261,13 +261,152 @@ stratumStructure(fm4)
 problem infeasible if max.controls=10
 gof pvals get smaller as limit/restrict controls ratio more
 
+An exploration of different matching schemes is explored below.  This contains 24 different balance assessments from: 4 propensity score models (brglm vs glm, unweighted vs population weighted), 3 matching schemes (top quartile propensity scores, full matching retaining 1/4 of the potential controls, and pair matching), and 2 balance assessments (population weighted vs unweighted).
+
+```{r}
+model3=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model3data,family=binomial(link='logit'))
+model3a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model3data,family=binomial(link='logit'),weights=pops)
+model3b=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model3data,family=binomial(link='logit'))
+model3c=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model3data,family=binomial(link='logit'),weights=pops)
+fit=fitted(model3)
+fita=fitted(model3a)
+fitb=fitted(model3b)
+fitc=fitted(model3c)
+model3data=cbind(model3data,fit,fita,fitb,fitc)
+optmatch:::boxplot.glm(model3)
+optmatch:::boxplot.glm(model3a)
+optmatch:::boxplot.glm(model3b)
+optmatch:::boxplot.glm(model3c)
+
+##model3: glm unweighted
+ken.treat=subset(model3data,model3data$treat==1)
+ken.control=subset(model3data,model3data$treat==0)
+top4=summary(model3data$fit)[5]
+ken.control=subset(ken.control,ken.control$treat!=1)
+ken.control=subset(ken.control, ken.control$fit>top4)
+ken.study=rbind(ken.treat,ken.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ken.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, data=ken.study,report=c('all'))
+
+fm3<-fullmatch(model3,data=model3data,omit.fraction=3/4)
+summary(fm3)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm3),data=model3data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm3),data=model3data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+pm_ken<-pairmatch(model3,data=model3data)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_ken),data=model3data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_ken),data=model3data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+stratumStructure(pm_ken)
+
+#####model3a: glm population weighted
+ken.treat=subset(model3data,model3data$treat==1)
+ken.control=subset(model3data,model3data$treat==0)
+top4=summary(model3data$fita)[5]
+ken.control=subset(ken.control,ken.control$treat!=1)
+ken.control=subset(ken.control, ken.control$fita>top4)
+ken.study=rbind(ken.treat,ken.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ken.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, data=ken.study,report=c('all'))
+
+fm3a<-fullmatch(model3a,data=model3data,omit.fraction=3/4)
+summary(fm3a)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm3a),data=model3data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm3a),data=model3data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+pm_kena<-pairmatch(model3a,data=model3data)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_kena),data=model3data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_kena),data=model3data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+stratumStructure(pm_kena)
 
 
-I need to go back through and:
+###model3b: brglm unweighted
+ken.treat=subset(model3data,model3data$treat==1)
+ken.control=subset(model3data,model3data$treat==0)
+top4=summary(model3data$fitb)[5]
+ken.control=subset(ken.control,ken.control$treat!=1)
+ken.control=subset(ken.control, ken.control$fitb>top4)
+ken.study=rbind(ken.treat,ken.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ken.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, 
+         data=ken.study,report=c('all'))
 
---include/remove DC?
---double check the number of counties--I have a different number for KY and MA results (pre-subsetting to just to South)
---double check ARF variables correct
+fm3b<-fullmatch(model3b,data=model3data,omit.fraction=3/4)
+summary(fm3b)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm3b),data=model3data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm3b),data=model3data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+pm_kenb<-fullmatch(model3b,data=model3data,min.controls=1,max.controls=1)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_kenb),data=model3data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_kenb),data=model3data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+stratumStructure(pm_kenb)
+
+###model3c: brglm population weighted
+ken.treat=subset(model3data,model3data$treat==1)
+ken.control=subset(model3data,model3data$treat==0)
+top4=summary(model3data$fitc)[5]
+ken.control=subset(ken.control,ken.control$treat!=1)
+ken.control=subset(ken.control, ken.control$fitc>top4)
+ken.study=rbind(ken.treat,ken.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ken.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, data=ken.study,report=c('all'))
+
+fm3c<-fullmatch(model3c,data=model3data,omit.fraction=3/4)
+summary(fm3c)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm3c),data=model3data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm3c),data=model3data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+pm_kenc<-fullmatch(model3c,data=model3data,min.controls=1,max.controls=1)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_kenc),data=model3data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_kenc),data=model3data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+stratumStructure(pm_kenc)
+```
+
+
+
 
 --http://www.rockinst.org/aca/southern_states.aspx
 --https://en.wikipedia.org/wiki/Patient_Protection_and_Affordable_Care_Act

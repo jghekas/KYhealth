@@ -5,6 +5,8 @@ date: "March 25, 2016"
 output: html_document
 ---
 
+This file provides the matching schemes and their balance assessments.  The first chunk calculates and configures the data into the appropriate format.  The second chunk provides the matching schemes that were considered with different adjustments.  The adjustments examined are: 4 models (brglm vs glm, population weighted vs unweighted), 3 matching/control group schemes (top quartile propensity score, full matching with 1/4 of the potential control group retained, and pair matching), and 2 balance assessments (population weighted vs unweighted), for a total of 24 different balance assessments within this document. 
+
 ```{r}
 library(reshape2)
 library(car)
@@ -66,27 +68,150 @@ model4data$treat=0
 model4data$treat[model4data$state==47]=1
 states.tncontrol=c('4','5','6','8','9','10','17','18','19','21','24','25','26','27','30','32','33','34','35','36','38','39','41','42','44','47','50','53','54')
 model4data=model4data[model4data$state %in% states.tncontrol,]
-model4=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'),weights=pops)
-boxplot(model4)
 ```
 
+The various matching schemes and control groups are included below.
+
 ```{r}
+model4=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
+             pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'))
+model4a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
+              pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'),weights=pops)
+model4b=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
+                pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'))
+model4c=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
+                pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'),weights=pops)
+fit=fitted(model4)
+fita=fitted(model4a)
+fitb=fitted(model4b)
+fitc=fitted(model4c)
+model4data=cbind(model4data,fit,fita,fitb,fitc)
+optmatch:::boxplot.glm(model4)
+optmatch:::boxplot.glm(model4a)
+optmatch:::boxplot.glm(model4b)
+optmatch:::boxplot.glm(model4c)
+
+#model 4: glm unweighted
 ten.treat=subset(model4data,model4data$treat==1)
-ten.control=model4data[which(fitted(model4)>summary(fitted(model4))[5]),]
+ten.control=subset(model4data,model4data$treat==0)
+top4=summary(model4data$fit)[5]
 ten.control=subset(ten.control,ten.control$treat!=1)
+ten.control=subset(ten.control, ten.control$fit>top4)
 ten.study=rbind(ten.treat,ten.control)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ten.study,report=c('all'))
-```
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ten.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, 
+         data=ten.study,report=c('all'))
 
-```{r}
-fm21<-fullmatch(model4,data=model4data)
-stratumStructure(fm21)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm21),data=model4data,report=c('adj.mean.diffs','std','z','chisquare.test'))
-fm22<-fullmatch(model4,data=model4data,omit.fraction=3/4)
-stratumStructure(fm22)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm22),data=model4data,report=c('adj.mean.diffs','std','z','chisquare.test'))
-fm23<-fullmatch(model4,data=model4data,omit.fraction=3/4,min.control=.25,max.control=12)
-stratumStructure(fm23)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm23),data=model4data,report=c('adj.mean.diffs','std','z','chisquare.test'))
+fm4<-fullmatch(model4,data=model4data,omit.fraction=3/4)
+summary(fm4)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm4),data=model4data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm4),data=model4data,
+         report=c('z','chisquare.test'),element.weights=pops)
 
+pm_ten<-pairmatch(model4,data=model4data)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_ten),data=model4data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_ten),data=model4data,
+         report=c('z','chisquare.test'),element.weights=pops)
+stratumStructure(pm_ten)
+
+#####model4a: glm weighted
+ten.treat=subset(model4data,model4data$treat==1)
+ten.control=subset(model4data,model4data$treat==0)
+top4=summary(model4data$fita)[5]
+ten.control=subset(ten.control,ten.control$treat!=1)
+ten.control=subset(ten.control, ten.control$fita>top4)
+ten.study=rbind(ten.treat,ten.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ten.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, 
+         data=ten.study,report=c('all'))
+
+fm4a<-fullmatch(model4a,data=model4data,omit.fraction=3/4)
+summary(fm4a)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm4a),data=model4data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm4a),data=model4data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+pm_tena<-pairmatch(model4a,data=model4data)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_tena),data=model4data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_tena),data=model4data,
+         report=c('z','chisquare.test'),element.weights=pops)
+stratumStructure(pm_tena)
+
+###model4b: brglm unweighted
+ten.treat=subset(model4data,model4data$treat==1)
+ten.control=subset(model4data,model4data$treat==0)
+top4=summary(model4data$fitb)[5]
+ten.control=subset(ten.control,ten.control$treat!=1)
+ten.control=subset(ten.control, ten.control$fitb>top4)
+ten.study=rbind(ten.treat,ten.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ten.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, 
+         data=ten.study,report=c('all'))
+
+fm4b<-fullmatch(model4b,data=model4data,omit.fraction=3/4)
+summary(fm4b)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm4b),data=model4data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm4b),data=model4data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+pm_tenb<-fullmatch(model4b,data=model4data,min.controls=1,max.controls=1)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_tenb),data=model4data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_tenb),data=model4data,
+         report=c('z','chisquare.test'),element.weights=pops)
+stratumStructure(pm_tenb)
+
+###model4c: brglm weighted
+ten.treat=subset(model4data,model4data$treat==1)
+ten.control=subset(model4data,model4data$treat==0)
+top4=summary(model4data$fitc)[5]
+ten.control=subset(ten.control,ten.control$treat!=1)
+ten.control=subset(ten.control, ten.control$fitc>top4)
+ten.study=rbind(ten.treat,ten.control)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ten.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, 
+         data=ten.study,report=c('all'))
+
+fm4c<-fullmatch(model4c,data=model4data,omit.fraction=3/4)
+summary(fm4c)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm4c),data=model4data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm4c),data=model4data,
+         report=c('z','chisquare.test'),element.weights=pops)
+
+pm_tenc<-fullmatch(model4c,data=model4data,min.controls=1,max.controls=1)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_tenc),data=model4data,
+         report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm_tenc),data=model4data,
+         report=c('z','chisquare.test'),element.weights=pops)
+stratumStructure(pm_tenc)
 ```

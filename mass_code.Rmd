@@ -100,13 +100,9 @@ pops <- subset(pops, select=c(state,county,pop06))
 ```
 
 
-Here, I am going through and implementing the (modified) propensity
-score model, using only the variables that I have available to me
-directly from the CDC data, without using any other sources.  This
-relies on the removal of poverty rate, median household income,
-unemployment rate, and percent uninsured from the model.
-**BH**: Is this comment out of sync with code?  The next PS model
-below appears to have the named variables.
+Here, I am going through and implementing the propensity
+score model according to that of Sommers, et al. in the 
+Supplement (Model 2).
 
 ```{r}
 model2data=merge(ages,race,by=c('state','county'))
