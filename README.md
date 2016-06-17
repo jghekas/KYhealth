@@ -57,7 +57,7 @@ contains the variables collected from the ARF available from 2012, which include
 ky_code.Rmd
 contains different matching schemes.  Balance assessments on the matching schemes were used for comparison.  Overall, full matching seemed to perform best
 
-Mass Table 2.Rmd
+Mass_Table_2.Rmd
 contains an attempt to calculate the numbers found in Table 2.  Weighted and unweighted averages were calculated for 2005, 2006, 2001-2005, and 2001-2006.  
 
 mass_code.Rmd
@@ -74,3 +74,32 @@ contains the basic analysis steps and a list of the files with brief description
 
 tn_code.Rmd
 contains the code to generate the data frame for Tennessee.  It also includes a handful of matching schemes (top quartile and full matching) along with their balance assessments.
+
+IN THE 617 FOLDER BUT NOT ON GITHUB:
+
+massdoublecheck.Rmd
+a double check of the top quartile balance assessment with and without population weighting
+
+Ben0509.Rmd
+almost the exact same as massrep.Rmd, although there is a little extra at the end and the code is a little more cleaned up.
+
+outcomes.Rmd
+looks at singular linear models for the outcome variables (need to check the strata function within these linear models).  Also createed line graphs (roughly the same as in allhealth.R).  tried to do geepack--which I need to redo with different syntax.
+
+Memo0526.Rmd
+the start of a memo for collaborators... to add code and details to as needed.  send before continuing with outcome analysis on Kentucky and Tennessee
+
+tennessee.Rmd
+creates the data frame within the code.
+looks at 4 models for propensity scores (brglm and glm, pop weighted and unweighted) for Kentucky, creates control groups in 3 ways (top quartile, full matching, pair matching), and assesses balance for each of these 12 in two ways (weighted and unweighted).
+
+kentucky.Rmd
+creates the data frame within the code.
+looks at 4 models for propensity scores (brglm and glm, pop weighted and unweighted) for Kentucky, creates control groups in 3 ways (top quartile, full matching, pair matching), and assesses balance for each of these 12 in two ways (weighted and unweighted).
+
+massachusetts.R
+assumes that the data frame has already been made and loaded
+looks at the 4 different models (brglm and glm, pop weighted and unweighted) for Massachusetts by creating a control group (3 methods: top quartile, full matching, pair matching) and assessing balance (2 methods: population weighted and unweighted)
+
+allhealth.R
+same set up as above, but more work.  includes the creation of line graphs and a little extra outcome analysis

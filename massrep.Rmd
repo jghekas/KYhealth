@@ -36,6 +36,7 @@ arf08 = read.csv('~/Downloads/arf08vars.csv',header=T)
 colnames(arf08) = c('state','county','inc07','inc06','inc05','inc04','inc03','inc02','inc01','inc00',
                     'pov07','pov06','pov05','pov04','pov03','pov02','pov01','pov00',
                     'ins05','emp07','emp06','emp05','emp04','emp03','emp02','emp01','emp00')
+arf08 = arf08[,-c(12)]
 model2data = merge(model2data, arf08, by=c('state','county'))
 #fit using 05 data
 model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov05
@@ -56,8 +57,9 @@ xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06
            mr03+mr04+pov05+inc05+emp05+ins05, element.weights=pops, data=men.study,report=c('all'))
 
 
+
 #for 2006
-model2a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov06.y
+model2a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov06
            +inc06+emp06+ins06,data=model2data,family=binomial(link='logit'))
 fita=fitted(model2a)
 model2adat=cbind(model2data,fita)
@@ -69,10 +71,10 @@ men.control=subset(men.control, men.control$fit>top4)
 men.study=rbind(men.treat,men.control)
 ##an unweighted balance assessment for 2006
 xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
-           mr03+mr04+pov06.y+inc06+emp06+ins06, data=men.study,report=c('all'))
+           mr03+mr04+pov06+inc06+emp06+ins06, data=men.study,report=c('all'))
 ##weighted balance assessment for 2006
 xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
-           mr03+mr04+pov06.y+inc06+emp06+ins06, element.weights=pops, data=men.study,report=c('all'))
+           mr03+mr04+pov06+inc06+emp06+ins06, element.weights=pops, data=men.study,report=c('all'))
 
 
 load('mort99.Rdata')
@@ -90,15 +92,16 @@ totals=dcast(data=total,state+county~year,value.var='mrate')
 colnames(totals)=c('state','county','mr05','mr06','mr07','mr08','mr09','mr10','mr11',
                    'mr12','mr13')
 totals[is.na(totals)]=0
+totals = totals[,-c(3:4)]
 
 men.study.out = merge(men.study, totals, by=c('state','county'), all.x=T)
 men.study.out = men.study.out[complete.cases(men.study.out),]
 colnames(men.study.out)
 #creating differences-in-differences
-men.study.out$mr07d = men.study.out$mr07 - men.study.out$mr06.y
-men.study.out$mr08d = men.study.out$mr08 - men.study.out$mr06.y
-men.study.out$mr09d = men.study.out$mr09 - men.study.out$mr06.y
-men.study.out$mr10d = men.study.out$mr10 - men.study.out$mr06.y
+men.study.out$mr07d = men.study.out$mr07 - men.study.out$mr06
+men.study.out$mr08d = men.study.out$mr08 - men.study.out$mr06
+men.study.out$mr09d = men.study.out$mr09 - men.study.out$mr06
+men.study.out$mr10d = men.study.out$mr10 - men.study.out$mr06
 
 colnames(men.study.out)
 xBalance(treat~mr07+mr08+mr09+mr10,element.weights=pops,data=men.study.out,
@@ -152,13 +155,29 @@ arfnb = arfnb[,-3]
 arfnb = dcast(data=arfnb, state+county+year~arfvar)
 
 deathdata1 = merge(deathdata, arfnb, by=c('state','county','year'))
+
 deathdata1 = subset(deathdata1,deathdata1$year!=1999 & deathdata1$year!=2000 &
                       deathdata1$year!=2011 & deathdata1$year!=2012 & deathdata1$year!=2013)
 
 
 
 model5 = glm(deaths/count~state+year+treat+racesex+hisp+age+emp+inc+pov,data=deathdata1,
-             weights=count,family=binomial(link=log))
+             weights=count,family=binomial(link='identity'))
 summary(model5)
+
+arf12 = arf12[,-c(8,11,15)]
+deathdata6 = merge(model2data,arf12, by=c('state','county'))
+deathdata6 = merge(deathdata6, totals, by=c('state','county'))
+
+model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov06+medinc06+unemp06+ins06,data=model2data,family=binomial(link='logit'))
+fm2<-fullmatch(model2,data=model2data,omit.fraction=3/4)
+summary(fm2)
+stratumStructure(fm2)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+ins06+strata(fm2),data=model2data,report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+ins06+strata(fm2),data=model2data,report=c('z','chisquare.test'),element.weights=pops)
+
+
+model6 = lm(mr06~a2034+a3544+a4554+black+otherrace+female+hisp+mr01+mr02+mr03+mr04+mr05+treat+pov00+pov01+pov02+pov03+pov04+pov05+emp00+emp01+emp02+emp03+emp04+emp05+inc00+inc01+inc02+inc03+inc04+inc05+ins05,data=deathdata6)
+summary(model6)
 ```
 
