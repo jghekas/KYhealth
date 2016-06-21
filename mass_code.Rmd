@@ -103,7 +103,10 @@ Mortalities were not reported for more county-years.  In these cases, it is
 hard to tell whether they were not reported as a result of there being 0 deaths 
 in that county or a lack of reporting. The highest reported population of the 
 instances when the death count is listed as an NA is 2273, with the next 
-highest population reported as 1675. 
+highest population reported as 1675.
+
+%JG comment As it appears all of the population values are reported for 2006, 
+does this next piece change the analysis?
 
 Population counts are missing in some years (perhaps as a by-product
 of the county not having reported deaths in those years).  We'll use last
