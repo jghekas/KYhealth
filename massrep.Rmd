@@ -1,7 +1,7 @@
 ---
-title: "Ben Report 5/9"
+title: "Sommers Replication"
 author: "Julie Ghekas"
-date: "May 9, 2016"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 ---
 
