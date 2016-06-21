@@ -39,7 +39,7 @@ racesmat$race[racesmat$race==1]="white"
 racesmat$race[racesmat$race==2]="black"
 racesmat$race[racesmat$race==3]="otherrace"
 races=aggregate(count~race+county+state,sum,data=racesmat)
-races=dcast(data=races,state+county~race)
+races=dcast(data=races,state+county~race, value.var='count')
 race=cbind(races[,1:2],100*t(apply(races[,3:5],1,prop.table)))
 
 sexmat=racesexmat
@@ -47,7 +47,7 @@ sexmat$sex=recode(racesexmat$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
 sexmat$sex[sexmat$sex==1]="male"
 sexmat$sex[sexmat$sex==2]="female"
 sexes=aggregate(count~sex+county+state,sum,data=sexmat) 
-sexes=dcast(data=sexes,state+county~sex)
+sexes=dcast(data=sexes,state+county~sex, value.var = 'count')
 sex=cbind(sexes[,1:2],100*t(apply(sexes[,3:4],1,prop.table)))
 
 hispmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state,sum,data=pop06)
@@ -55,7 +55,7 @@ hispmat$hisp=recode(hispmat$hisp, '2=1; 1=2; 9=2')
 hispmat$hisp[hispmat$hisp==1]="hisp"
 hispmat$hisp[hispmat$hisp==2]='nothisp'
 hisps=aggregate(count~hisp+county+state,sum,data=hispmat) 
-hisps=dcast(data=hisps,state+county~hisp)
+hisps=dcast(data=hisps,state+county~hisp, value.var='count')
 hisp=cbind(hisps[,1:2],100*t(apply(hisps[,3:4],1,prop.table)))
 ```
 
