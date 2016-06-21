@@ -16,32 +16,32 @@ buffsize = 2e5
 }
 if (!file.exists(paste0(datadir, "created"))) stop(paste0("Have to create 'created' subdir of ", datadir))
 
-mort99=read.fwf(paste0(mortdatadir, 'MORT9913.txt'),width=c(2,3,4,1,1,2,4,3,4), buffersize=buffsize)
-colnames(mort99)=c('state','county','year','racesex','hisp','age','ICD10cause','cause','deaths')
-pop99=read.fwf(paste0(datadir, 'pop9913.txt'),width=c(2,3,4,1,1,rep(8,14),25,1), buffersize=buffsize)
-colnames(pop99)=c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
-arf<-read.csv(paste0(datadir, 'arfarfsixten.csv'),header=T)
-colnames(arf)<-c('state','county','med610','medinc10','medinc06','pov10','pov06','ins10','ins06','unemp10','unemp06')
+mort99 = read.fwf(paste0(mortdatadir, 'MORT9913.txt'), width=c(2,3,4,1,1,2,4,3,4), buffersize=buffsize)
+colnames(mort99) <- c('state','county','year','racesex','hisp','age','ICD10cause','cause','deaths')
+pop99 = read.fwf(paste0(datadir, 'pop9913.txt'), width=c(2,3,4,1,1,rep(8,14),25,1), buffersize=buffsize)
+colnames(pop99) = c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
+arf = read.csv(paste0(datadir, 'arfarfsixten.csv'),header=T)
+colnames(arf) = c('state','county','med610','medinc10','medinc06','pov10','pov06','ins10','ins06','unemp10','unemp06')
 ```
 
 I then subset the data to include only the years I want for the Massachusetts replication, only counties, and add in a variable for an age group (simply the addition of two age groups).
 
 ```{r}
-pop06=subset(pop99,pop99$year>=2001 & pop99$year<=2006)
-pop06=subset(pop06,pop06$type==3)
-pop06$a2034=pop06$a2024+pop06$a2534
+pop06 = subset(pop99, pop99$year>=2001 & pop99$year<=2006)
+pop06 = subset(pop06, pop06$type==3)
+pop06$a2034 = pop06$a2024 + pop06$a2534
 
-mort06=subset(mort99,mort99$year>=2001 & mort99$year<=2006)
-mort06=subset(mort06,mort06$age>=09 & mort06$age<=13)
+mort06 = subset(mort99, mort99$year>=2001 & mort99$year<=2006)
+mort06 = subset(mort06, mort06$age>=09 & mort06$age<=13)
 
 ```
 
 The following section was added to provide a mortality rate for all years, to help with the analysis of the comparison post-treatment.
 
 ```{r}
-popall=subset(pop99,pop99$type==3)
-popall$a2034=popall$a2024+popall$a2534
-mortall=subset(mort99, mort99$age>=09 & mort99$age<=13)
+popall = subset(pop99, pop99$type==3)
+popall$a2034 = popall$a2024 + popall$a2534
+mortall = subset(mort99, mort99$age>=09 & mort99$age<=13)
 
 ```
 
