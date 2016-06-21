@@ -68,8 +68,13 @@ These counts are all for individuals who are between 20 and 64 years of age, as 
 deaths=aggregate(deaths~county+state+year,sum,data=mort06)
 pop06$pops=pop06$a2024+pop06$a2534+pop06$a3544+pop06$a4554+pop06$a5564
 pops=aggregate(pops~county+state+year,sum,data=pop06)
-total=merge(pops,deaths,by=c('year','state','county'))
+popscheck = dcast(data=pops, state+county~year, value.var='pops')
+popscheck[which(is.na(popscheck$'2006')),]
+rbind(popscheck[which(is.na(popscheck$'2001')),],popscheck[which(is.na(popscheck$'2002')),],popscheck[which(is.na(popscheck$'2003')),],popscheck[which(is.na(popscheck$'2004')),],popscheck[which(is.na(popscheck$'2005')),],popscheck[which(is.na(popscheck$'2006')),])
+total=merge(pops,deaths,by=c('year','state','county'), all=T)
 total$mrate=total$deaths/total$pops*100000
+total[which(is.na(total$mrate)),]
+all.equal(which(is.na(total$deaths)),which(is.na(total$mrate)))
 totals=dcast(data=total,state+county~year,value.var='mrate')
 colnames(totals)=c('state','county','mr01','mr02','mr03','mr04','mr05','mr06')
 ```
@@ -87,11 +92,23 @@ resulting in a complete dataframe.
 totals[is.na(totals)] = 0
 ```
 
+There are 3144 counties in the US.  Of these counties, it appears as if 3 of 
+them did not have populations reported in the population dataset that we have 
+(there are 3141 counties that have a population reported for 2003-2006).  
+2 additional counties (the same two counties) did not report their population 
+for 2001-2002, but did have population counts reported for the remaining four 
+years.  I'm not sure if the chunk the follows this changes values reported.
 
+Mortalities were not reported for more county-years.  In these cases, it is 
+hard to tell whether they were not reported as a result of there being 0 deaths 
+in that county or a lack of reporting. The highest reported population of the 
+instances when the death count is listed as an NA is 2273, with the next 
+highest population reported as 1675. 
 
 Population counts are missing in some years (perhaps as a by-product
 of the county not having reported deaths in those years).  We'll use last
 observation carry forward.
+
 ```{r}
 pops=dcast(data=total,state+county~year,value.var='pops')
 pops$pop06 <- apply(pops[ncol(pops):3L], 1, function(x) x[!is.na(x)][1])
