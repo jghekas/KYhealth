@@ -5,41 +5,75 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
 
+I am trying to replicate Table 2 in the Sommers, et al. paper.  According to the paper,
+within Massachusetts, the age distribution is 33.2% 20-34 yr olds, 26.3% 35-44, 24.0% 
+45-54, and 16.5% 55-64 yr olds.  Here, I try looking at 2001-2005, 2001-2006, 2005, 
+and 2006 as the baseline years.  I also try unweighted and weighted means for 
+calculating the overall percentage for Massachusetts.  The full distribution is listed
+for the unweighted means, while the weighted means are reported only for 20-34 year 
+olds. 
+
 ```{r}
-setwd('~')
-load('pop99.Rdata')
-pop05=subset(pop99,pop99$year==2005)
-pop05=subset(pop05, pop05$type==3)
-pop05$a2034 = pop05$a2024+pop05$a2534
-mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop05)
-ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
+stopifnot(file.exists(prepped_data_file <- paste0(datadir, "created/mass_prep.RData")))
+load(prepped_data_file)
+```
+
+Using just 2005 data:
+
+```{r}
+pop05 = subset(popall, popall$year==2005)
+mat1 = aggregate(cbind(a2034, a3544, a4554, a5564)~county + state, sum, data=pop05)
+ages = cbind(mat1[,1:2], 100*t(apply(mat1[,3:6], 1, prop.table)))
 mas1 = subset(ages, ages$state==25)
+#unweighted mean
 lapply(mas1, mean)
+#weighted mean
+mat1 = subset(mat1, mat1$state==25)
 sum(mat1[,3])/sum(mat1[,c(3:6)])
+```
 
-pop05 = subset(pop99, pop99$year>=2001& pop99$year<=2005)
-pop05 = subset(pop05, pop05$type==3)
-pop05$a2034 = pop05$a2024+pop05$a2534
-mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop05)
+For 2001-2005
+
+```{r}
+pop05 = subset(popall, popall$year>=2001 & popall$year<=2005)
+mat1 = aggregate(cbind(a2034, a3544, a4554, a5564)~county + state, sum, data=pop05)
 ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
 mas1 = subset(ages, ages$state==25)
+#unweighted mean
 lapply(mas1,mean)
+#weighted mean for 20-34 year olds
+mat1 = subset(mat1, mat1$state==25)
 sum(mat1[,3])/sum(mat1[,c(3:6)])
+```
 
-pop06= subset(pop99, pop99$year>=2001& pop99$year<=2006)
-pop06 = subset(pop06, pop06$type==3)
-pop06$a2034 = pop06$a2024+pop06$a2534
-mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop06)
+For 2001-2006:
+
+```{r}
+pop06= subset(popall, popall$year>=2001 & popall$year<=2006)
+mat1 = aggregate(cbind(a2034, a3544, a4554, a5564)~county + state, sum, data=pop06)
 ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
 mas1 = subset(ages, ages$state==25)
+#unweighted mean
 lapply(mas1,mean)
+#weighted mean
+mat1 = subset(mat1, mat1$state==25)
 sum(mat1[,3])/sum(mat1[,c(3:6)])
+sum(mat1[,4])/sum(mat1[,c(3:6)])
+sum(mat1[,5])/sum(mat1[,c(3:6)])
+sum(mat1[,6])/sum(mat1[,c(3:6)])
+```
 
+Above matches what is reported in the table (2001-2006, weighted means).
+
+```{r}
 pop06 = subset(pop06, pop06$year==2006)
 mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop06)
 ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
 mas1 = subset(ages, ages$state==25)
+#unweighted mean
 lapply(mas1,mean)
+#weighted mean
+mat1 = subset(mat1, mat1$state==25)
 sum(mat1[,3])/sum(mat1[,c(3:6)])
 sum(mat1[,4])/sum(mat1[,c(3:6)])
 sum(mat1[,5])/sum(mat1[,c(3:6)])
