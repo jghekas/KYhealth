@@ -55,15 +55,73 @@ ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
 mas1 = subset(ages, ages$state==25)
 #unweighted mean
 lapply(mas1,mean)
-#weighted mean
-mat1 = subset(mat1, mat1$state==25)
-sum(mat1[,3])/sum(mat1[,c(3:6)])
-sum(mat1[,4])/sum(mat1[,c(3:6)])
-sum(mat1[,5])/sum(mat1[,c(3:6)])
-sum(mat1[,6])/sum(mat1[,c(3:6)])
+#weighted mean for Mass
+matmas = subset(mat1, mat1$state==25)
+apply(matmas, 2, sum)/sum(matmas[,3:6])
+#weighted mean for US (including Mass)
+apply(mat1, 2, sum)/sum(mat1[,3:6])
+#weighted mean for US (w/o Mass)
+matno = subset(mat1, mat1$state!=25)
+apply(matno, 2, sum)/sum(matno[,3:6])
+
+
+racesexmat = aggregate(cbind(count=a2034+a3544+a4554+a5564)~racesex+county+state,
+                       sum, data=pop06)
+racesmat = racesexmat
+racesmat$race=recode(racesexmat$racesex,"1:2=1; 3:4=2; 5:8=3")
+racesmat$race[racesmat$race==1]="white"
+racesmat$race[racesmat$race==2]="black"
+racesmat$race[racesmat$race==3]="otherrace"
+races=aggregate(count~race+county+state,sum,data=racesmat)
+races=dcast(data=races,state+county~race, value.var='count')
+#mass weighted race
+race = subset(races, races$state==25)
+apply(race, 2, sum)/sum(race[,3:5])
+#no mass weighted race
+raceno = subset(races, races$state!=25)
+apply(raceno, 2, sum)/sum(raceno[,3:5])
+#all weighted race
+apply(races, 2, sum)/sum(races[,3:5])
+
+sexmat=racesexmat
+sexmat$sex=recode(racesexmat$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
+sexmat$sex[sexmat$sex==1]="male"
+sexmat$sex[sexmat$sex==2]="female"
+sexes=aggregate(count~sex+county+state,sum,data=sexmat) 
+sexes=dcast(data=sexes,state+county~sex, value.var = 'count')
+#mass
+sexmass = subset(sexes, sexes$state==25)
+apply(sexmass, 2, sum)/sum(sexmass[,3:4])
+#all us
+apply(sexes, 2, sum)/sum(sexes[,3:4])
+#all us less mass
+sexno = subset(sexes, sexes$state!=25)
+apply(sexno, 2, sum)/sum(sexno[,3:4])
+
+hispmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state,sum,data=pop06)
+hispmat$hisp=recode(hispmat$hisp, '2=1; 1=2; 9=2')
+hispmat$hisp[hispmat$hisp==1]="hisp"
+hispmat$hisp[hispmat$hisp==2]='nothisp'
+hisps=aggregate(count~hisp+county+state,sum,data=hispmat) 
+hisps=dcast(data=hisps,state+county~hisp, value.var='count')
+#mass
+hispmass = subset(hisps, hisps$state==25)
+apply(hispmass, 2, sum)/sum(hispmass[,3:4])
+#us
+apply(hisps, 2, sum)/sum(hisps[,3:4])
+#us less mass
+hispno = subset(hisps, hisps$state!=25)
+apply(hispno, 2, sum)/sum(hispno[,3:4])
+
+
 ```
 
 Above matches what is reported in the table (2001-2006, weighted means).
+The rounding on the race category seems a little off (but may be a result of adding 
+to 100).  The Latino category seems a little off, but less than 1%.
+Rest of US is US without Mass (which makes sense).  Again, excepting some small 
+rounding differences, I didn't notice many large differences.  The Latino category 
+again does not calculate correctly.
 
 ```{r}
 pop06 = subset(pop06, pop06$year==2006)
@@ -74,9 +132,6 @@ mas1 = subset(ages, ages$state==25)
 lapply(mas1,mean)
 #weighted mean
 mat1 = subset(mat1, mat1$state==25)
-sum(mat1[,3])/sum(mat1[,c(3:6)])
-sum(mat1[,4])/sum(mat1[,c(3:6)])
-sum(mat1[,5])/sum(mat1[,c(3:6)])
-sum(mat1[,6])/sum(mat1[,c(3:6)])
+apply(mat1, 2, sum)/sum(mat1[,3:6])
 ```
 
