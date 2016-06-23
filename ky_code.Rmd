@@ -7,7 +7,32 @@ output: pdf_document
 
 I will begin to replicate the Massachusetts analysis with Kentucky, using the full data.
 
+The mortality and population data can be read into R by running the code shown in
+mass_prep.Rmd.  The first two lines below will stop the code from running if the
+appropriate code has not been running, creating the necessary data frames.
+
 ```{r}
+stopifnot(file.exists(prepped_data_file <- paste0(datadir, "created/mass_prep.RData")))
+load(prepped_data_file)
+
+library(reshape2)
+library(car)
+library(optmatch)
+
+stopifnot(file.exists("./lib"))
+if ( file.exists(paste0("./lib/", R.version[['platform']], "-library") ) )
+{
+  with_libpaths(with(R.version, paste0("./lib/", platform, "-library/", major, ".", substr(minor, 1,1))),
+		library(RItools)
+		)
+} else with_libpaths("lib/", library(RItools))
+```
+
+If the data frames have not been created according to mass_prep, then the following 
+chunk will create them.  For now, the code below is displayed but not evaluated, as it 
+demonstrates how to load the data but is not necessary.
+
+```{r, eval=F}
 if (grepl("bbh", getwd())) #ie, Ben's setup
 {
 datadir = "/Volumes/data/nchs-CMF1989-2013/"
@@ -23,27 +48,15 @@ pop99=read.fwf(paste0(datadir, 'pop9913.txt'),width=c(2,3,4,1,1,rep(8,14),25,1))
 colnames(pop99)=c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
 arf<-read.csv(paste0(datadir, 'arfarfsixten.csv'),header=T)
 colnames(arf)<-c('state','county','med610','medinc10','medinc06','pov10','pov06','ins10','ins06','unemp10','unemp06')
-library(reshape2)
-library(car)
-library(RItools)
-library(optmatch)
+
 ```
 
-For future uses of this file, I'm going to save them as .Rdata files.  These should be easier and quicker to load than using the read.fwf command, as the files are large and fixed-width files do take a while to load.  If I were to reload these files, I would reload them with the following commands.  It is important to know your working directory with these files, as if you aren't in the working directory where your file was saved, you won't be able to access the file again using the load command.
+I'm now going to subset the data for the years that we want--2005-2013.  2010 is the 
+year the ACA was enacted, so in keeping with Sommers, I'll use the five years preceding 
+it and the three years following for the analysis.
 
 ```{r}
-#save(mort99,file='mort99.Rdata')
-#save(pop99,file='pop99.Rdata')
-load('mort99.Rdata')
-load('pop99.Rdata')
-```
-
-I'm now going to subset the data for the years that we want--2007-2013.  2010 is the year the ACA was enacted, so in keeping with Sommers, I'll use the three years preceding it and the three years following for the analysis.
-
-```{r}
-pop13=subset(pop99,pop99$year>=2005)
-pop13=subset(pop13,pop13$type==3)
-pop13$a2034=pop13$a2024+pop13$a2534
+pop13=subset(popall,popall$year>=2005)
 ```
 
 ```{r}
@@ -78,8 +91,7 @@ hisp=cbind(hisps[,1:2],100*t(apply(hisps[,3:4],1,prop.table)))
 ```
 
 ```{r}
-mort13=subset(mort99,mort99$year>=2005)
-mort13=subset(mort13,mort13$age>=09 & mort13$age<=13)
+mort13=subset(mortall,mortall$year>=2005)
 deaths=aggregate(deaths~county+state+year,sum,data=mort13)
 pop13$pops=pop13$a2024+pop13$a2534+pop13$a3544+pop13$a4554+pop13$a5564
 pops=aggregate(pops~county+state+year,sum,data=pop13)
@@ -97,15 +109,25 @@ model3data=merge(model3data,hisp,by=c('state','county'))
 model3data=merge(model3data,totals,by=c('state','county'))
 ```
 
-At the beginning, I read in ARF data with the variables of interest from 2006 and 2010.  I'll read it in here:
+At the beginning, I read in ARF data with the variables of interest from 2006 and 2010. 
+I'll read it in here:
 
 ```{r}
 model3data=merge(model3data,arf,by=c('state','county'))
 ```
 
-Implicit within the merge command is that if the key ids (in this case state and county) don't match up, then they are removed.  In this case, this removes the outside territories of the US, and four counties that could be included if states were not further restricted.  One is a county with a very small population size, and some are the new boroughs that were formed in Alaska post-2007.  The census areas of Alaska that don't match up with the CDC data are also removed.  Otherwise, 
+Implicit within the merge command is that if the key ids (in this case state and 
+county) don't match up, then they are removed.  In this case, this removes the outside 
+territories of the US, and four counties that could be included if states were not 
+further restricted.  One is a county with a very small population size, and some are 
+the new boroughs that were formed in Alaska post-2007.  The census areas of Alaska that 
+don't match up with the CDC data are also removed.   
  
-I'm going to go through and only include the states that hadn't increased Medicaid since the passing of the Affordable Care Act.  This way, I have a treated group consisting of Kentucky counties and a control group of only those counties that haven't had an increase in coverage.  These states were identified according to www.hhs.gov/healthcare/facts-and-features/state-by-state/index.html on March 16, 2016.
+I'm going to go through and only include the states that hadn't increased Medicaid 
+since the passing of the Affordable Care Act.  This way, I have a treated group 
+consisting of Kentucky counties and a control group of only those counties that haven't 
+had an increase in coverage.  These states were identified according to 
+www.hhs.gov/healthcare/facts-and-features/state-by-state/index.html on March 16, 2016.
 
 ```{r}
 states.kycontrol=c('1','12','13','16','20','21','22','23','28','29','31','37','40','45','46','47','48','49','51','55','56') #includes Kentucky and other control states
@@ -117,8 +139,10 @@ model3data=model3data[model3data$state %in% states.kycontrol,]
 ```{r}
 model3data$treat=0
 model3data$treat[model3data$state==21]=1
-model3=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model3data,family=binomial(link='logit'))
-boxplot(model3)
+model3=glm(treat~a2034+a3544+a4554+male+white+black+hisp+
+             mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+
+             unemp10+ins10,data=model3data,family=binomial(link='logit'))
+optmatch:::boxplot.glm(model3)
 ```
 
 ```{r}
@@ -126,7 +150,9 @@ ken.treat=subset(model3data,model3data$treat==1)
 ken.control=model3data[which(fitted(model3)>summary(fitted(model3))[5]),]
 ken.control=subset(ken.control,ken.control$treat!=1)
 ken.study=rbind(ken.treat,ken.control)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ken.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, 
+         data=ken.study,report=c('all'))
 ```
 
 The background balance of this is pretty poor.  There is a pretty large lack of balance with racial and ethnic background, mortality rates, unemployment, median household income, and poverty rate.  Since the balance is not great, I am going to start by doing some matching.  I'd like to find a good match where each Kentucky county will be matched with 3 controls.  I chose 3, since the top quartile had 345 counties, compared to 120 in Kentucky.  The ratio of the top quartile to Kentucky is 2.875, so close to 3.  However, I'll start with simple pairmatching and increase from there.  With pairmatching, each county is paired with a single county from outside Kentucky; this should result in a closer match than with multiple controls, since the multiple controls require additional controls to be included that may be further from the Kentucky counties.
@@ -134,13 +160,20 @@ The background balance of this is pretty poor.  There is a pretty large lack of 
 ```{r}
 pm1<-pairmatch(model3,controls = 1, data=model3data)
 summary(pm1)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm1),data=model3data,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(pm1),data=model3data,report=c('adj.mean.diffs','std','z',
+                                                'chisquare.test'))
 pm2<-pairmatch(model3,controls = 2, data=model3data)
 summary(pm2)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm2),data=model3data,report=c('adj.mean.diffs','std','z'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(pm2),data=model3data,report=c('adj.mean.diffs','std','z'))
 pm3<-pairmatch(model3,controls = 3, data=model3data)
 summary(pm3)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm3),data=model3data,report=c('adj.mean.diffs','std','z'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(pm3),data=model3data,report=c('adj.mean.diffs','std','z'))
 ```
 
 The balance here is improved compared to no matching scheme, but it is still a fairly unbalanced comparison.  It is the most balanced when it is a single pairmatching.  Since I would still like to include more control counties, I am going to try to use calipers on the mortality rate in 2010, to ensure that the counties are more closely matched on that.
@@ -148,7 +181,9 @@ The balance here is improved compared to no matching scheme, but it is still a f
 ```{r}
 mhd4<-match_on(treat~mr10+pov10+unemp10+scores(model3),data=model3data)
 pm4<-pairmatch(mhd4,controls=2,caliper = 2, data=model3data)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm4),data=model3data,report=c('adj.mean.diffs','std','z'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(pm4),data=model3data,report=c('adj.mean.diffs','std','z'))
 ```
 
 pm4 is more unbalanced than pm2??  Especially on unemp and mr10.  Unexpected???
@@ -156,16 +191,23 @@ pm4 is more unbalanced than pm2??  Especially on unemp and mr10.  Unexpected???
 ```{r}
 mhd5<-match_on(treat~mr10+scores(model3),data=model3data)
 pm5<-pairmatch(mhd5,controls=2,caliper=2,data=model3data)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+umemp10+ins10+strata(pm5),data=model3data,report=c('adj.mean.diffs','std','z'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+umemp10+ins10+
+           strata(pm5),data=model3data,report=c('adj.mean.diffs','std','z'))
 ```
 
 Again, this got less balanced on mr10 when matched using mr10 directly in the match_on function.  This had pretty good balance on the other mr variables.  Let's see what happens when just looking at matching based on mr10 values.
 
 ```{r}
 pm6<-pairmatch(treat~mr10,controls=3,data=model3data)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+umemp10+ins10+strata(pm6),data=model3data,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+umemp10+ins10+
+           strata(pm6),data=model3data,report=c('adj.mean.diffs','std',
+                                                'z','chisquare.test'))
 pm7<-pairmatch(treat~mr10+mr09,controls=3,data=model3data)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+umemp10+ins10+strata(pm7),data=model3data,report=c('adj.mean.diffs','std','z'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+umemp10+ins10+
+           strata(pm7),data=model3data,report=c('adj.mean.diffs','std','z'))
 ```
 
 The matching on mortality rate seemed to be best when only matching considering mr10, although in that case there was a significant difference in mr09 means.
@@ -179,7 +221,9 @@ pps<-pps[order(pps[,2]),]
 pps<-pps[1588:1707,1]
 ken.con<-model3data[pps,]
 ken.comp<-rbind(ken.treat,ken.con)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+umemp10+ins10,data=ken.comp,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+umemp10+ins10,
+         data=ken.comp,report=c('adj.mean.diffs','std','z','chisquare.test'))
 ```
 
 This provides the best balance so far.  With this comparison group, there is a significance at the 5% level with pov10 and a 10% significant difference of median household income.
@@ -197,7 +241,9 @@ pps1<-pps1[order(pps1[,2]),]
 pps1<-pps1[1562:1707,1]
 ken.con<-model3data[pps1,]
 ken.comp<-rbind(ken.treat,ken.con)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=ken.comp,report=c('adj.mean.diffs','std','z'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,
+         data=ken.comp,report=c('adj.mean.diffs','std','z'))
 ```
 
 When using 1500:1707, so 208 counties, there are plenty of significance stars, especially around mr09, mr10, pov10, medinc10, and unemp10.
@@ -214,7 +260,9 @@ Going through to look at comparison between KY and top half of propensity scores
 aboveKY=which(fitted(model3)>min(fitted(model3)[model3data$treat==1]))
 aboveKY=model3data[aboveKY,]
 tophalf=rbind(aboveKY,ken.treat)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=tophalf,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,
+         data=tophalf,report=c('adj.mean.diffs','std','z','chisquare.test'))
 ```
 
 The comparison to those above a cutoff still looks pretty unbalanced.
@@ -226,7 +274,10 @@ fm2<-fullmatch(model3,data=model3data)
 stratumStructure(fm2)
 fm1<-fullmatch(model3,data=model3data, min.control=.25,max.controls=10)
 summary(fm1)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm1),data=model3data,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(fm1),data=model3data,report=c('adj.mean.diffs','std',
+                                                'z','chisquare.test'))
 stratumStructure(fm1)
 ```
 
@@ -237,12 +288,21 @@ Comparing pm1 to the groups formed within pm1:
 ```{r}
 pm1data=cbind(model3data,pm1)
 pm1data=pm1data[complete.cases(pm1data),]
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm1),data=pm1data,report=c('adj.mean.diffs','std','z','chisquare.test'))
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm1),data=model3data,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(pm1),data=pm1data,report=c('adj.mean.diffs','std','z',
+                                             'chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(pm1),data=model3data,report=c('adj.mean.diffs','std',
+                                                'z','chisquare.test'))
 
 pm2data=cbind(model3data,pm2)
 pm2data=pm2data[complete.cases(pm2data),]
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(pm2),data=pm2data,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(pm2),data=pm2data,report=c('adj.mean.diffs','std','z',
+                                             'chisquare.test'))
 ```
 
 Looking further into full-matching:
@@ -250,11 +310,18 @@ Looking further into full-matching:
 ```{r}
 fm3<-fullmatch(model3,data=model3data,omit.fraction=3/4)
 summary(fm3)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm3),data=model3data,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(fm3),data=model3data,report=c('adj.mean.diffs','std',
+                                                'z','chisquare.test'))
 stratumStructure(fm3)
-fm4<-fullmatch(model3,data=model3data,omit.fraction=3/4,min.controls=0.1,max.controls=12)
+fm4<-fullmatch(model3,data=model3data,omit.fraction=3/4,min.controls=0.1,
+               max.controls=12)
 summary(fm4)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+strata(fm4),data=model3data,report=c('adj.mean.diffs','std','z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+
+           mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10+
+           strata(fm4),data=model3data,report=c('adj.mean.diffs','std',
+                                                'z','chisquare.test'))
 stratumStructure(fm4)
 ```
 
@@ -264,10 +331,18 @@ gof pvals get smaller as limit/restrict controls ratio more
 An exploration of different matching schemes is explored below.  This contains 24 different balance assessments from: 4 propensity score models (brglm vs glm, unweighted vs population weighted), 3 matching schemes (top quartile propensity scores, full matching retaining 1/4 of the potential controls, and pair matching), and 2 balance assessments (population weighted vs unweighted).
 
 ```{r}
-model3=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model3data,family=binomial(link='logit'))
-model3a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model3data,family=binomial(link='logit'),weights=pops)
-model3b=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model3data,family=binomial(link='logit'))
-model3c=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,data=model3data,family=binomial(link='logit'),weights=pops)
+model3=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+
+             mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,
+           data=model3data,family=binomial(link='logit'))
+model3a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+
+              mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,
+            data=model3data,family=binomial(link='logit'),weights=pops)
+model3b=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+
+                mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,
+              data=model3data,family=binomial(link='logit'))
+model3c=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+
+                mr07+mr08+mr09+mr10+pov10+medinc10+unemp10+ins10,
+              data=model3data,family=binomial(link='logit'),weights=pops)
 fit=fitted(model3)
 fita=fitted(model3a)
 fitb=fitted(model3b)
@@ -288,7 +363,8 @@ ken.study=rbind(ken.treat,ken.control)
 xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
            mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ken.study,report=c('all'))
 xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
-           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, data=ken.study,report=c('all'))
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, 
+         data=ken.study,report=c('all'))
 
 fm3<-fullmatch(model3,data=model3data,omit.fraction=3/4)
 summary(fm3)
@@ -319,7 +395,8 @@ ken.study=rbind(ken.treat,ken.control)
 xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
            mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, data=ken.study,report=c('all'))
 xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr07+
-           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, data=ken.study,report=c('all'))
+           mr08+mr09+mr10+pov10+medinc10+unemp10+ins10, element.weights=pops, 
+         data=ken.study,report=c('all'))
 
 fm3a<-fullmatch(model3a,data=model3data,omit.fraction=3/4)
 summary(fm3a)
