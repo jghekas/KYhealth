@@ -138,16 +138,50 @@ apply(mat1, 2, sum)/sum(mat1[,3:6])
 Trying for the arf variables:
 
 ```{r}
+arfcalc = melt(arfall, id=c('state', 'county'))
+arfcalc$var = substr(arfcalc$variable, 1, 3)
+arfcalc$year = as.numeric(substr(arfcalc$variable, 4, 5))
+arfcalc$year=recode(arfcalc$year, "7=2007;0=2000; 1=2001; 2=2002; 3=2003; 4=2004; 
+                    5=2005; 6=2006; 8=2008; 9=2009; 10=2010; 11=2011")
+arfcalc = dcast(data=arfcalc, state+county+year~var)
+arf06 = subset(arfcalc, arfcalc$year>=2001 & arfcalc$year<=2006)
+popbyyr = aggregate(cbind(popn=a2034+a3544+a4554+a5564)~county+state+year, sum, 
+                    data=pop06)
+arfpop = merge(arf06, popbyyr, by=c('state','county','year'))
+#need to go back and relook at this.... double check missing ARF variables
+#double check that the difference in the 3230 ARF counties and 3139/3141 population
+#counties
 
-arfcalc = arf[,c(1:2, 5, 7, 9, 11)]
-#unweighted calculation
+#unweighted mean
 #mass
-arfmass = subset(arfcalc, arfcalc$state==25)
-apply(arfmass, 2, mean)
+arfpopmass = subset(arfpop, arfpop$state==25)
+apply(arfpopmass, 2, function(x) mean(x, na.rm=T))
 #us
-apply(arfcalc, 2, mean)
+apply(arfpop, 2, function(x) mean(x, na.rm=T))
 #us less mass
-arfno = subset(arfcalc, arfcalc$state!=25)
-apply(arfno, 2, mean)
+arfpopno = subset(arfpop, arfpop$state!=25)
+apply(arfpopno, 2, function(x) mean(x, na.rm=T))
+
+#weighted mean
+#us
+apply(arfpop[c(4, 5, 7)], 2, function(x) sum(x*arfpop$popn)/sum(arfpop$popn))
+arf05 = subset(arfpop, arfpop$year>=2005 & arfpop$year<=2006)
+sum(arf05$ins * arf05$popn)/sum(arf05$popn)
+#mass
+apply(arfpopmass[c(4, 5, 7)], 2, function(x) 
+  sum(x*arfpopmass$popn)/sum(arfpopmass$popn))
+arf05mass = subset(arf05, arf05$state==25)
+sum(arf05mass$ins * arf05mass$popn) / sum(arf05mass$popn)
+#us less mass
+apply(arfpopno[c(4, 5, 7)], 2, function(x) sum(x*arfpopno$popn)/sum(arfpopno$popn))
+arf05no = subset(arf05, arf05$state!=25)
+sum(arf05no$ins * arf05no$popn) / sum(arf05no$popn)
+
 
 ```
+
+From this, I couldn't get the insurance variables to match up.  I also was not able to 
+identify the 2001-2004 versions of those variables, so that may contribute to the lack 
+of match up.  Interestingly, the insurance values for the years I could find had an 
+uninsurance rate lower in Massachusetts than reported (12.3%) and an unsuriance rate 
+high in the rest of the US (20.1%).
