@@ -5,20 +5,38 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
 
-This file provides the matching schemes and their balance assessments.  The first chunk calculates and configures the data into the appropriate format.  The second chunk provides the matching schemes that were considered with different adjustments.  The adjustments examined are: 4 models (brglm vs glm, population weighted vs unweighted), 3 matching/control group schemes (top quartile propensity score, full matching with 1/4 of the potential control group retained, and pair matching), and 2 balance assessments (population weighted vs unweighted), for a total of 24 different balance assessments within this document. 
+This file provides the matching schemes and their balance assessments.  The first chunk 
+provides the appropriate setup and configuration of the computer.  This chunk relies on 
+mass_prep having been run to load in the appropriate versions of the data.  The second 
+chunk calculates and configures the data into the appropriate format.  The calculations 
+performed here are the same as those performed for the Kentucky analysis until it comes 
+to including counties to serve as the control counties.  The third chunk provides the 
+matching schemes that were considered with different adjustments.  The adjustments 
+examined are: 4 models (brglm vs glm, population weighted vs unweighted), 3 
+matching/control group schemes (top quartile propensity score, full matching with 1/4 
+of the potential control group retained, and pair matching), and 2 balance assessments 
+(population weighted vs unweighted), for a total of 24 different balance assessments 
+within this document. 
 
 ```{r}
+stopifnot(file.exists(prepped_data_file <- paste0(datadir, "created/mass_prep.RData")))
+load(prepped_data_file)
+
+stopifnot(file.exists("./lib"))
+if ( file.exists(paste0("./lib/", R.version[['platform']], "-library") ) )
+{
+  with_libpaths(with(R.version, paste0("./lib/", platform, "-library/", major, ".", substr(minor, 1,1))),
+		library(RItools)
+		)
+} else with_libpaths("lib/", library(RItools))
+
 library(reshape2)
 library(car)
-library(RItools)
 library(optmatch)
-load('mort99.Rdata')
-load('pop99.Rdata')
-arf<-read.csv('~/Downloads/arfarfsixten.csv',header=T)
-colnames(arf)<-c('state','county','med610','medinc10','medinc06','pov10','pov06','ins10','ins06','unemp10','unemp06')
-pop13=subset(pop99,pop99$year>=2005)
-pop13=subset(pop13,pop13$type==3)
-pop13$a2034=pop13$a2024+pop13$a2534
+```
+
+```{r}
+pop13=subset(popall, popall$year>=2005)
 agemat=aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop13)
 ages=cbind(agemat[,1:2],100*t(apply(agemat[,3:6],1,prop.table)))
 
@@ -47,8 +65,7 @@ hispmat$hisp[hispmat$hisp==2]='nothisp'
 hisps=aggregate(count~hisp+county+state,sum,data=hispmat) 
 hisps=dcast(data=hisps,state+county~hisp)
 hisp=cbind(hisps[,1:2],100*t(apply(hisps[,3:4],1,prop.table)))
-mort13=subset(mort99,mort99$year>=2005)
-mort13=subset(mort13,mort13$age>=09 & mort13$age<=13)
+mort13=subset(mortall,mortall$year>=2005)
 deaths=aggregate(deaths~county+state+year,sum,data=mort13)
 pop13$pops=pop13$a2024+pop13$a2534+pop13$a3544+pop13$a4554+pop13$a5564
 pops=aggregate(pops~county+state+year,sum,data=pop13)
@@ -62,13 +79,16 @@ model3data=merge(model3data,sex,by=c('state','county'))
 model3data=merge(model3data,hisp,by=c('state','county'))
 model3data=merge(model3data,totals,by=c('state','county'))
 model3data=merge(model3data,arf,by=c('state','county'))
-model3dat=model3data
-model4data=model3dat
+model4data=model3data
 model4data$treat=0
 model4data$treat[model4data$state==47]=1
 states.tncontrol=c('4','5','6','8','9','10','17','18','19','21','24','25','26','27','30','32','33','34','35','36','38','39','41','42','44','47','50','53','54')
 model4data=model4data[model4data$state %in% states.tncontrol,]
 ```
+
+The control counties above were located in states that had adopted changes to their 
+Medicaid program as a result of the ACA.  The source and citation for this list can be 
+found in the ky_code.Rmd file.
 
 The various matching schemes and control groups are included below.
 
@@ -76,11 +96,16 @@ The various matching schemes and control groups are included below.
 model4=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
              pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'))
 model4a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
-              pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'),weights=pops)
-model4b=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
-                pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'))
-model4c=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
-                pov10+medinc10+unemp10+ins10,data=model4data,family=binomial(link='logit'),weights=pops)
+              pov10+medinc10+unemp10+ins10,data=model4data,
+            family=binomial(link='logit'),weights=pops)
+model4b=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09
+              +mr10+
+                pov10+medinc10+unemp10+ins10,data=model4data,
+              family=binomial(link='logit'))
+model4c=brglm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+
+                mr09+mr10+
+                pov10+medinc10+unemp10+ins10,data=model4data,
+              family=binomial(link='logit'),weights=pops)
 fit=fitted(model4)
 fita=fitted(model4a)
 fitb=fitted(model4b)
