@@ -20,8 +20,20 @@ mort99 = read.fwf(paste0(mortdatadir, 'MORT9913.txt'), width=c(2,3,4,1,1,2,4,3,4
 colnames(mort99) <- c('state','county','year','racesex','hisp','age','ICD10cause','cause','deaths')
 pop99 = read.fwf(paste0(datadir, 'pop9913.txt'), width=c(2,3,4,1,1,rep(8,14),25,1), buffersize=buffsize)
 colnames(pop99) = c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
-arf = read.csv(paste0(datadir, 'arfarfsixten.csv'),header=T)
+arf = read.csv(paste0(datadir, 'arfarfsixten.csv'), header=T)
 colnames(arf) = c('state','county','med610','medinc10','medinc06','pov10','pov06','ins10','ins06','unemp10','unemp06')
+arf08 = read.csv(paste0(datadir, 'arf08vars.csv'), header=T)
+arf12 = read.csv(paste0(datadir, 'arf12vars.csv'), header=T) 
+colnames(arf08) = c('state','county','inc07','inc06','inc05','inc04','inc03','inc02',
+                    'inc01','inc00',
+                    'pov07','pov06','pov05','pov04','pov03','pov02','pov01','pov00',
+                    'ins05','emp07','emp06','emp05','emp04','emp03','emp02','emp01','emp00')
+colnames(arf12) = c('state','county','inc11','inc10','inc09','inc08','inc07','inc06','inc05',
+                    'pov11','pov10','pov09','pov08','pov07','pov06','pov05','ins10','ins09',
+                    'ins08',
+                    'ins07','ins06','emp11','emp10','emp09','emp08','mep07','emp06','emp05')
+arf12 = arf12[,-c(7,8,9,14,15,16,26,27,28)]
+arfall = merge(arf08, arf12, by=c('state','county'), all=T)
 ```
 
 I then subset the data to include only the years I want for the Massachusetts replication, only counties, and add in a variable for an age group (simply the addition of two age groups).
@@ -47,7 +59,7 @@ mortall = subset(mort99, mort99$age>=09 & mort99$age<=13)
 
 As that was the last use of `pop99` in this script:
 ```{r}
-rm(pop99,mort99)
+rm(pop99, mort99, arf08, arf12)
 ```
 
 Save the results of this script, along with a record of the state of
@@ -62,7 +74,7 @@ mass_prep_git_state$diff_not_staged <- system("git diff -- mass_prep.Rmd",
                                              intern=TRUE)
 mass_prep_git_state$diff_staged <- system("git diff --staged mass_prep.Rmd",
                                              intern=TRUE)
-save(popall,mortall,pop06,mort06,arf,mass_prep_git_state,
+save(popall,mortall,pop06,mort06,arf,arfall,mass_prep_git_state,
      file=paste0(datadir, "created/mass_prep.RData"))
 ```
  

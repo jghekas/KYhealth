@@ -135,3 +135,19 @@ mat1 = subset(mat1, mat1$state==25)
 apply(mat1, 2, sum)/sum(mat1[,3:6])
 ```
 
+Trying for the arf variables:
+
+```{r}
+
+arfcalc = arf[,c(1:2, 5, 7, 9, 11)]
+#unweighted calculation
+#mass
+arfmass = subset(arfcalc, arfcalc$state==25)
+apply(arfmass, 2, mean)
+#us
+apply(arfcalc, 2, mean)
+#us less mass
+arfno = subset(arfcalc, arfcalc$state!=25)
+apply(arfno, 2, mean)
+
+```
