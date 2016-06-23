@@ -24,22 +24,85 @@ Interestingly, the results from my negative binomial model are opposite of what 
 Below you will find the supporting data for what I have said above.
 
 ```{r}
-setwd('~')
+stopifnot(file.exists(prepped_data_file <- paste0(datadir, "created/mass_prep.RData")))
+load(prepped_data_file)
+
+stopifnot(file.exists("./lib"))
+if ( file.exists(paste0("./lib/", R.version[['platform']], "-library") ) )
+{
+  with_libpaths(with(R.version, paste0("./lib/", platform, "-library/", major, ".", substr(minor, 1,1))),
+		library(RItools)
+		)
+} else with_libpaths("lib/", library(RItools))
+
 library(reshape2)
 library(car)
-library(RItools)
 library(optmatch)
+
 library(brglm)
 library(MASS)
-load('model2data.Rdata')
-arf08 = read.csv('~/Downloads/arf08vars.csv',header=T)
-colnames(arf08) = c('state','county','inc07','inc06','inc05','inc04','inc03','inc02','inc01','inc00',
-                    'pov07','pov06','pov05','pov04','pov03','pov02','pov01','pov00',
-                    'ins05','emp07','emp06','emp05','emp04','emp03','emp02','emp01','emp00')
-arf08 = arf08[,-c(12)]
-model2data = merge(model2data, arf08, by=c('state','county'))
+
+agemat=aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop06)
+ages=cbind(agemat[,1:2],100*t(apply(agemat[,3:6],1,prop.table)))
+
+racesexmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~racesex+county+state,sum,data=pop06)
+racesmat=racesexmat
+racesmat$race=recode(racesexmat$racesex,"1:2=1; 3:4=2; 5:8=3")
+racesmat$race[racesmat$race==1]="white"
+racesmat$race[racesmat$race==2]="black"
+racesmat$race[racesmat$race==3]="otherrace"
+races=aggregate(count~race+county+state,sum,data=racesmat)
+races=dcast(data=races,state+county~race, value.var='count')
+race=cbind(races[,1:2],100*t(apply(races[,3:5],1,prop.table)))
+
+sexmat=racesexmat
+sexmat$sex=recode(racesexmat$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
+sexmat$sex[sexmat$sex==1]="male"
+sexmat$sex[sexmat$sex==2]="female"
+sexes=aggregate(count~sex+county+state,sum,data=sexmat) 
+sexes=dcast(data=sexes,state+county~sex, value.var = 'count')
+sex=cbind(sexes[,1:2],100*t(apply(sexes[,3:4],1,prop.table)))
+
+hispmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state,sum,data=pop06)
+hispmat$hisp=recode(hispmat$hisp, '2=1; 1=2; 9=2')
+hispmat$hisp[hispmat$hisp==1]="hisp"
+hispmat$hisp[hispmat$hisp==2]='nothisp'
+hisps=aggregate(count~hisp+county+state,sum,data=hispmat) 
+hisps=dcast(data=hisps,state+county~hisp, value.var='count')
+hisp=cbind(hisps[,1:2],100*t(apply(hisps[,3:4],1,prop.table)))
+
+deaths=aggregate(deaths~county+state+year,sum,data=mort06)
+
+pop06$pops=pop06$a2024+pop06$a2534+pop06$a3544+pop06$a4554+pop06$a5564
+pops=aggregate(pops~county+state+year,sum,data=pop06)
+popscheck = dcast(data=pops, state+county~year, value.var='pops')
+popscheck[which(is.na(popscheck$'2006')),]
+rbind(popscheck[which(is.na(popscheck$'2001')),],popscheck[which(is.na(popscheck$'2002')),],popscheck[which(is.na(popscheck$'2003')),],popscheck[which(is.na(popscheck$'2004')),],popscheck[which(is.na(popscheck$'2005')),],popscheck[which(is.na(popscheck$'2006')),])
+total=merge(pops,deaths,by=c('year','state','county'), all=T)
+total$mrate=total$deaths/total$pops*100000
+total[which(is.na(total$mrate)),]
+all.equal(which(is.na(total$deaths)),which(is.na(total$mrate)))
+totals=dcast(data=total,state+county~year,value.var='mrate')
+colnames(totals)=c('state','county','mr01','mr02','mr03','mr04','mr05','mr06')
+
+totals[is.na(totals)] = 0
+pops=dcast(data=total,state+county~year,value.var='pops')
+pops$pop06 <- apply(pops[ncol(pops):3L], 1, function(x) x[!is.na(x)][1])
+all.equal(pops[!is.na(pops$'2006'),'2006'],pops[!is.na(pops$'2006'),'pop06'])
+pops <- subset(pops, select=c(state,county,pop06))
+model2data=merge(ages,race,by=c('state','county'))
+model2data=merge(model2data,sex,by=c('state','county'))
+model2data=merge(model2data,hisp,by=c('state','county'))
+model2data=merge(model2data,totals,by=c('state','county'))
+model2data=merge(model2data,pops,by=c('state','county'))
+model2data$treat=0
+model2data$treat[model2data$state==25]=1
+model2data=merge(model2data,arfall,by=c('state','county'))
+
+
 #fit using 05 data
-model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov05
+model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+
+             mr06+pov05
            +inc05+emp05+ins05,data=model2data,family=binomial(link='logit'))
 fit=fitted(model2)
 model2dat=cbind(model2data,fit)
@@ -50,16 +113,20 @@ men.control=subset(men.control,men.control$treat!=1)
 men.control=subset(men.control, men.control$fit>top4)
 men.study=rbind(men.treat,men.control)
 ##an unweighted balance assessment for 2005 
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01
+         +mr02+
            mr03+mr04+pov05+inc05+emp05+ins05, data=men.study,report=c('all'))
 ##weighted balance assessment for 2005
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
-           mr03+mr04+pov05+inc05+emp05+ins05, element.weights=pops, data=men.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01
+         +mr02+
+           mr03+mr04+pov05+inc05+emp05+ins05, element.weights=pops, 
+         data=men.study,report=c('all'))
 
 
 
 #for 2006
-model2a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov06
+model2a=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+
+              mr06+pov06
            +inc06+emp06+ins06,data=model2data,family=binomial(link='logit'))
 fita=fitted(model2a)
 model2adat=cbind(model2data,fita)
@@ -70,19 +137,19 @@ men.control=subset(men.control,men.control$treat!=1)
 men.control=subset(men.control, men.control$fit>top4)
 men.study=rbind(men.treat,men.control)
 ##an unweighted balance assessment for 2006
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+
+           mr01+mr02+
            mr03+mr04+pov06+inc06+emp06+ins06, data=men.study,report=c('all'))
 ##weighted balance assessment for 2006
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+
-           mr03+mr04+pov06+inc06+emp06+ins06, element.weights=pops, data=men.study,report=c('all'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+
+           mr01+mr02+
+           mr03+mr04+pov06+inc06+emp06+ins06, element.weights=pops, 
+         data=men.study,report=c('all'))
 
 
-load('mort99.Rdata')
-load('pop99.Rdata')
-mort13=subset(mort99,mort99$year>=2005)
-mort13=subset(mort13,mort13$age>=09 & mort13$age<=13)
+mort13=subset(mortall,mortall$year>=2005)
 deaths=aggregate(deaths~county+state+year,sum,data=mort13)
-pop13 = subset(pop99, pop99$year>=2005)
+pop13 = subset(popall, popall$year>=2005)
 pop13$pops=pop13$a2024+pop13$a2534+pop13$a3544+pop13$a4554+pop13$a5564
 pops=aggregate(pops~county+state+year,sum,data=pop13)
 popweights=aggregate(pops~county+state,sum,data=pop13)
@@ -110,8 +177,6 @@ xBalance(treat~mr07d+mr08d+mr09d+mr10d,element.weights=pops,data=men.study.out,
          report=c('z.scores','p.value','chisquare.test'))
 
 ##negative binomial model
-popall=subset(pop99, pop99$type==3)
-popall$a2034=popall$a2024+popall$a2534
 popa = popall[, c(1:5, 14:16, 22)]
 popa = melt(popa, id=c('state','county','year','racesex','hisp'))
 colnames(popa) = c('state','county','year','racesex','hisp','age','count')
@@ -132,32 +197,19 @@ deathdata$racesex = as.factor(deathdata$racesex)
 deathdata$state = as.factor(deathdata$state)
 deathdata$year = as.factor(deathdata$year)
 
-arf08 = read.csv('~/Downloads/arf08vars.csv',header=T)
-arf12 = read.csv('~/Downloads/arf12vars.csv',header=T)
-colnames(arf08) = c('state','county','inc07','inc06','inc05','inc04','inc03','inc02',
-                    'inc01','inc00',
-                    'pov07','pov06','pov05','pov04','pov03','pov02','pov01','pov00',
-                    'ins05','emp07','emp06','emp05','emp04','emp03','emp02','emp01','emp00')
-colnames(arf12) = c('state','county','inc11','inc10','inc09','inc08','inc07','inc06','inc05',
-                    'pov11','pov10','pov09','pov08','pov07','pov06','pov05','ins10','ins09',
-                    'ins08',
-                    'ins07','ins06','emp11','emp10','emp09','emp08','mep07','emp06','emp05')
-arf12 = arf12[,-c(7,8,9,14,15,16,26,27,28)]
-arfnb = merge(arf08, arf12, by=c('state','county'))
-arfnb = melt(arfnb, id=c('state','county'))
-head(arfnb)
-y = data.frame(arfvar=substr(arfnb$variable, 1,3), year=as.numeric(substr(arfnb$variable,4,5)))
-arfnb = cbind(arfnb, y)
-head(arfnb)
-arfnb$year=recode(arfnb$year, "7=2007;0=2000; 1=2001; 2=2002; 3=2003; 4=2004; 5=2005; 6=2006; 
+arfnb = melt(arfall, id=c('state', 'county'))
+arfnb$arfvar = substr(arfnb$variable, 1, 3)
+arfnb$year = as.numeric(substr(arfnb$variable, 4, 5)) 
+arfnb$year=recode(arfnb$year, "7=2007;0=2000; 1=2001; 2=2002; 3=2003; 4=2004; 5=2005; 
+6=2006; 
                   8=2008; 9=2009; 10=2010; 11=2011")
-arfnb = arfnb[,-3]
 arfnb = dcast(data=arfnb, state+county+year~arfvar)
 
 deathdata1 = merge(deathdata, arfnb, by=c('state','county','year'))
 
 deathdata1 = subset(deathdata1,deathdata1$year!=1999 & deathdata1$year!=2000 &
-                      deathdata1$year!=2011 & deathdata1$year!=2012 & deathdata1$year!=2013)
+                      deathdata1$year!=2011 & deathdata1$year!=2012 & 
+                      deathdata1$year!=2013)
 
 
 
@@ -165,19 +217,30 @@ model5 = glm(deaths/count~state+year+treat+racesex+hisp+age+emp+inc+pov,data=dea
              weights=count,family=binomial(link='identity'))
 summary(model5)
 
-arf12 = arf12[,-c(8,11,15)]
-deathdata6 = merge(model2data,arf12, by=c('state','county'))
+#need to remove the duplicate arf variables with arfa
+arfa = arfall
+deathdata6 = merge(model2data, arfa, by=c('state','county'))
 deathdata6 = merge(deathdata6, totals, by=c('state','county'))
 
-model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+pov06+medinc06+unemp06+ins06,data=model2data,family=binomial(link='logit'))
+model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+
+             mr06+pov06+medinc06+unemp06+ins06,data=model2data,
+           family=binomial(link='logit'))
 fm2<-fullmatch(model2,data=model2data,omit.fraction=3/4)
 summary(fm2)
 stratumStructure(fm2)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+ins06+strata(fm2),data=model2data,report=c('z','chisquare.test'))
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+ins06+strata(fm2),data=model2data,report=c('z','chisquare.test'),element.weights=pops)
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+
+           hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+
+           ins06+strata(fm2),data=model2data,report=c('z','chisquare.test'))
+xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+
+           hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+
+           ins06+strata(fm2),data=model2data,report=c('z','chisquare.test'),
+         element.weights=pops)
 
 
-model6 = lm(mr06~a2034+a3544+a4554+black+otherrace+female+hisp+mr01+mr02+mr03+mr04+mr05+treat+pov00+pov01+pov02+pov03+pov04+pov05+emp00+emp01+emp02+emp03+emp04+emp05+inc00+inc01+inc02+inc03+inc04+inc05+ins05,data=deathdata6)
+model6 = lm(mr06~a2034+a3544+a4554+black+otherrace+female+hisp+mr01+mr02+mr03
+            +mr04+mr05+treat+pov00+pov01+pov02+pov03+pov04+pov05+emp00+
+              emp01+emp02+emp03+emp04+emp05+inc00+inc01+inc02+inc03+inc04+
+              inc05+ins05,data=deathdata6)
 summary(model6)
 ```
 
