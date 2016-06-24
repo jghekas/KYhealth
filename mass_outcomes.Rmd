@@ -8,33 +8,104 @@ output: html_document
 Outcome analysis is performed here for Massachusetts.  The matching scheme that we 
 selected used an unweighted glm to generate the propensity scores, full matching 
 retaining 1/4 of the potential control counties, and a population-weighted balance 
-assessment.  The groups formed from this procedure will function as the two groups to be 
-compared to assess if the outcomes are different.  The full pool of potential 
+assessment.  The groups formed from this procedure will function as the two groups to 
+be compared to assess if the outcomes are different.  The full pool of potential 
 comparisons, i.e. all counties not in Massachusetts, may be used at various points in 
 time, but these are not the primary comparisons of interest.
 
 ```{r}
-setwd('~')
+stopifnot(file.exists(prepped_data_file <- paste0(datadir, "created/mass_prep.RData")))
+load(prepped_data_file)
+
 library(reshape2)
 library(car)
-library(RItools)
 library(optmatch)
 library(brglm)
 library(MASS)
 library(geepack)
 
-load('pop99.Rdata')
-load('mort99.Rdata')
-load('model2data.Rdata')
+stopifnot(file.exists("./lib"))
+if ( file.exists(paste0("./lib/", R.version[['platform']], "-library") ) )
+{
+  with_libpaths(with(R.version, paste0("./lib/", platform, "-library/", major, ".", substr(minor, 1,1))),
+		library(RItools)
+		)
+} else with_libpaths("lib/", library(RItools))
+```
+
+```{r}
+agemat=aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop06)
+ages=cbind(agemat[,1:2],100*t(apply(agemat[,3:6],1,prop.table)))
+
+racesexmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~racesex+county+state,sum,data=pop06)
+racesmat=racesexmat
+racesmat$race=recode(racesexmat$racesex,"1:2=1; 3:4=2; 5:8=3")
+racesmat$race[racesmat$race==1]="white"
+racesmat$race[racesmat$race==2]="black"
+racesmat$race[racesmat$race==3]="otherrace"
+races=aggregate(count~race+county+state,sum,data=racesmat)
+races=dcast(data=races,state+county~race, value.var='count')
+race=cbind(races[,1:2],100*t(apply(races[,3:5],1,prop.table)))
+
+sexmat=racesexmat
+sexmat$sex=recode(racesexmat$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
+sexmat$sex[sexmat$sex==1]="male"
+sexmat$sex[sexmat$sex==2]="female"
+sexes=aggregate(count~sex+county+state,sum,data=sexmat) 
+sexes=dcast(data=sexes,state+county~sex, value.var = 'count')
+sex=cbind(sexes[,1:2],100*t(apply(sexes[,3:4],1,prop.table)))
+
+hispmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state,sum,data=pop06)
+hispmat$hisp=recode(hispmat$hisp, '2=1; 1=2; 9=2')
+hispmat$hisp[hispmat$hisp==1]="hisp"
+hispmat$hisp[hispmat$hisp==2]='nothisp'
+hisps=aggregate(count~hisp+county+state,sum,data=hispmat) 
+hisps=dcast(data=hisps,state+county~hisp, value.var='count')
+hisp=cbind(hisps[,1:2],100*t(apply(hisps[,3:4],1,prop.table)))
+
+deaths=aggregate(deaths~county+state+year,sum,data=mort06)
+
+pop06$pops=pop06$a2024+pop06$a2534+pop06$a3544+pop06$a4554+pop06$a5564
+pops=aggregate(pops~county+state+year,sum,data=pop06)
+popscheck = dcast(data=pops, state+county~year, value.var='pops')
+popscheck[which(is.na(popscheck$'2006')),]
+rbind(popscheck[which(is.na(popscheck$'2001')),], 
+      popscheck[which(is.na(popscheck$'2002')),], 
+      popscheck[which(is.na(popscheck$'2003')),], 
+      popscheck[which(is.na(popscheck$'2004')),], 
+      popscheck[which(is.na(popscheck$'2005')),], 
+      popscheck[which(is.na(popscheck$'2006')),])
+total=merge(pops,deaths,by=c('year','state','county'), all=T)
+total$mrate=total$deaths/total$pops*100000
+total[which(is.na(total$mrate)),]
+all.equal(which(is.na(total$deaths)),which(is.na(total$mrate)))
+totals=dcast(data=total,state+county~year,value.var='mrate')
+colnames(totals)=c('state','county','mr01','mr02','mr03','mr04','mr05','mr06')
+
+totals[is.na(totals)] = 0
+pops=dcast(data=total,state+county~year,value.var='pops')
+pops$pop06 <- apply(pops[ncol(pops):3L], 1, function(x) x[!is.na(x)][1])
+all.equal(pops[!is.na(pops$'2006'),'2006'],pops[!is.na(pops$'2006'),'pop06'])
+pops <- subset(pops, select=c(state,county,pop06))
+model2data=merge(ages,race,by=c('state','county'))
+model2data=merge(model2data,sex,by=c('state','county'))
+model2data=merge(model2data,hisp,by=c('state','county'))
+model2data=merge(model2data,totals,by=c('state','county'))
+model2data=merge(model2data,pops,by=c('state','county'))
+model2data$treat=0
+model2data$treat[model2data$state==25]=1
+model2data=merge(model2data,arfall,by=c('state','county'))
+
+```
+
+```{r}
 model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+mr06+
              pov06+medinc06+unemp06+ins06,data=model2data,family=binomial(link='logit'))
 fm2<-fullmatch(model2,data=model2data,omit.fraction=3/4)
 model2fit = cbind(model2data, fm2)
 model2fit = model2fit[,c(1,2,31)]
 
-popyr = subset(pop99, pop99$year>=2001)
-popyr = subset(popyr, popyr$type==3)
-popyr$a2034 = popyr$a2024 + popyr$a2534
+popyr = subset(popall, popall$year>=2001)
 popyr$pops = popyr$a2034 + popyr$a3544 + popyr$a4554 + popyr$a5564
 popsyr = aggregate(pops~county+state+year, sum, data=popyr)
 
@@ -69,8 +140,7 @@ hispsyr = aggregate(count~hisp+county+state+year, sum, data=hispyr)
 hispsyr = dcast(data=hispsyr, state+county+year~hisp)
 hispyr = cbind(hispsyr[,1:3],100*t(apply(hispsyr[,4:5],1,prop.table)))
 
-mortyr = subset(mort99, mort99$year>=2001)
-mortyr = subset(mortyr, mortyr$age>=09 & mortyr$age<=13)
+mortyr = subset(mortall, mortall$year>=2001)
 deathsyr = aggregate(deaths~county+state+year, sum, data=mortyr)
 
 yeardata = merge(deathsyr, popsyr, by=c('state','county','year'))
@@ -98,28 +168,17 @@ of Massachusetts for a handful of variables, including insurance and mortality.
 
 ```{r}
 #I need to perform weighted means for the control group
-arf08 = read.csv('~/Downloads/arf08vars.csv',header=T)
-arf12 = read.csv('~/Downloads/arf12vars.csv',header=T)
-colnames(arf08) = c('state','county','inc07','inc06','inc05','inc04','inc03','inc02','inc01','inc00',
-                    'pov07','pov06','pov05','pov04','pov03','pov02','pov01','pov00',
-                    'ins05','emp07','emp06','emp05','emp04','emp03','emp02','emp01','emp00')
-arf08 = arf08[,-c(12)]
-colnames(arf12) = c('state','county','inc11','inc10','inc09','inc08','inc07','inc06','inc05',
-                    'pov11','pov10','pov09','pov08','pov07','pov06','pov05','ins10','ins09','ins08',
-                    'ins07','ins06','emp11','emp10','emp09','emp08','emp07','emp06','emp05')
-arf12 = arf12[,-c(7,8,9,11,14,15,16,17,21,26,27,28)]
-arfnb = merge(arf08, arf12, by=c('state','county'))
 
-total=merge(popsyr,deathsyr,by=c('year','state','county'))
+total=merge(popsyr,deathsyr,by=c('year','state','county'), all=T)
 total$mrate=total$deaths/total$pops*100000
 totals=dcast(data=total,state+county~year,value.var='mrate')
 colnames(totals)=c('state','county','mr01','mr02','mr03','mr04','mr05','mr06','mr07',
                    'mr08','mr09','mr10','mr11','mr12','mr13')
 totals[is.na(totals)]=0
-totals = totals[,-c(3:8)]
+totals = subset(totals, select = -c(mr01:mr06))
 
 
-deathdata6 = merge(model2data, arfnb, by=c('state','county'))
+deathdata6 = merge(model2data, arfall, by=c('state','county'))
 deathdata6 = merge(deathdata6, totals, by=c('state','county'))
 colnames(deathdata6)
 mass.group = merge(deathdata6, model2fit, by=c('state','county'))
@@ -141,8 +200,10 @@ all.ins = apply(deathdata6[,c(46,27,64,63,62,26)],2,mean)
 cont.ins = apply(subset(mass.group,mass.group$treat==0)[,c(46,27,64,63,62,26)],2,mean)
 mass.ins = apply(subset(deathdata6,deathdata6$treat==1)[,c(46,27,64,63,62,26)],2,mean)
 allm.ins = apply(deathdata6[,c(46,27,64,63,62,26)],2,median)
-contm.ins = apply(subset(mass.group,mass.group$treat==0)[,c(46,27,64,63,62,26)],2,median)
-massm.ins = apply(subset(deathdata6,deathdata6$treat==1)[,c(46,27,64,63,62,26)],2,median)
+contm.ins = apply(subset(mass.group, mass.group$treat==0)[,c(46,27,64,63,62,26)],
+                  2, median)
+massm.ins = apply(subset(deathdata6, deathdata6$treat==1)[,c(46,27,64,63,62,26)], 
+                  2, median)
 plot(c(5:10),mass.ins,ylim=c(5,23),type='l',col='red')
 lines(c(5:10),cont.ins,col='purple')
 lines(c(5:10),all.ins,col='blue')
@@ -159,8 +220,11 @@ As a double check of the strata command within the geese function:
 ```{r}
 ab = matrix(rnorm(500),nrow=100,ncol=5)
 ab = as.data.frame(ab)
-idvar = c(rep(1,10),rep(2,10),rep(3,10),rep(4,10),rep(5,10),rep(6,10),rep(7,10),rep(8,10),rep(9,10),rep(10,10))
-ce = c(rep('1.1',5), rep('1.2',6), rep('1.3',7),rep('1.4',8),rep('1.5',9),rep('1.6',10),rep('1.7',11),rep('1.8',12),rep('1.9',13),rep('1.10',14),rep('1.11',5))
+idvar = c(rep(1, 10), rep(2, 10), rep(3, 10), rep(4, 10), rep(5, 10), rep(6, 10), 
+          rep(7, 10), rep(8, 10), rep(9, 10), rep(10, 10))
+ce = c(rep('1.1', 5), rep('1.2', 6), rep('1.3', 7), rep('1.4', 8), rep('1.5', 9), 
+       rep('1.6', 10), rep('1.7', 11), rep('1.8', 12), rep('1.9', 13), rep('1.10', 14), 
+       rep('1.11', 5))
 ce = as.factor(ce)
 fg = matrix(0,nrow=100,ncol=11)
 fg[c(1:5),1] = 1
