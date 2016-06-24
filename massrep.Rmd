@@ -218,7 +218,7 @@ model5 = glm(deaths/count~state+year+treat+racesex+hisp+age+emp+inc+pov,data=dea
 summary(model5)
 
 #need to remove the duplicate arf variables with arfa
-arfa = arfall
+arfa = subset(arfall, select = -c('emp06', 'inc06', 'pov06', 'inc10', 'pov10', 'ins10', 'ins06', 'emp10'))
 deathdata6 = merge(model2data, arfa, by=c('state','county'))
 deathdata6 = merge(deathdata6, totals, by=c('state','county'))
 
