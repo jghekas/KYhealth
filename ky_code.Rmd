@@ -95,7 +95,7 @@ mort13=subset(mortall,mortall$year>=2005)
 deaths=aggregate(deaths~county+state+year,sum,data=mort13)
 pop13$pops=pop13$a2024+pop13$a2534+pop13$a3544+pop13$a4554+pop13$a5564
 pops=aggregate(pops~county+state+year,sum,data=pop13)
-total=merge(pops,deaths,by=c('year','state','county'))
+total=merge(pops,deaths,by=c('year','state','county'), all=T)
 total$mrate=total$deaths/total$pops*100000
 totals=dcast(data=total,state+county~year,value.var='mrate')
 colnames(totals)=c('state','county','mr05','mr06','mr07','mr08','mr09','mr10','mr11','mr12','mr13')
