@@ -46,6 +46,20 @@ mat1 = subset(mat1, mat1$state==25)
 sum(mat1[,3])/sum(mat1[,c(3:6)])
 ```
 
+For 2006:
+
+```{r}
+pop06 = subset(popall, popall$year==2006)
+mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop06)
+ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
+mas1 = subset(ages, ages$state==25)
+#unweighted mean
+lapply(mas1,mean)
+#weighted mean
+mat1 = subset(mat1, mat1$state==25)
+apply(mat1, 2, sum)/sum(mat1[,3:6])
+```
+
 For 2001-2006:
 
 ```{r}
@@ -123,18 +137,6 @@ Rest of US is US without Mass (which makes sense).  Again, excepting some small
 rounding differences, I didn't notice many large differences.  The Latino category 
 again does not calculate correctly.
 
-```{r}
-pop06 = subset(pop06, pop06$year==2006)
-mat1 = aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop06)
-ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
-mas1 = subset(ages, ages$state==25)
-#unweighted mean
-lapply(mas1,mean)
-#weighted mean
-mat1 = subset(mat1, mat1$state==25)
-apply(mat1, 2, sum)/sum(mat1[,3:6])
-```
-
 Trying for the arf variables:
 
 ```{r}
@@ -184,4 +186,13 @@ From this, I couldn't get the insurance variables to match up.  I also was not a
 identify the 2001-2004 versions of those variables, so that may contribute to the lack 
 of match up.  Interestingly, the insurance values for the years I could find had an 
 uninsurance rate lower in Massachusetts than reported (12.3%) and an unsuriance rate 
-high in the rest of the US (20.1%).
+high in the rest of the US (20.1%).  
+
+From the description in the Sommers paper, it looks like the % Hispanic may have come 
+from the ARF and not from the CDC's CMF.  This is something to look into.
+
+Now, to check for the control group values given in Table 2:
+
+```{r}
+
+```
