@@ -16,6 +16,9 @@ olds.
 ```{r}
 stopifnot(file.exists(prepped_data_file <- paste0(datadir, "created/mass_prep.RData")))
 load(prepped_data_file)
+library(reshape2)
+library(car)
+library(optmatch)
 ```
 
 Using just 2005 data:
@@ -63,12 +66,12 @@ apply(mat1, 2, sum)/sum(mat1[,3:6])
 For 2001-2006:
 
 ```{r}
-pop06= subset(popall, popall$year>=2001 & popall$year<=2006)
+pop06 = subset(popall, popall$year>=2001 & popall$year<=2006)
 mat1 = aggregate(cbind(a2034, a3544, a4554, a5564)~county + state, sum, data=pop06)
-ages = cbind(mat1[,1:2],100*t(apply(mat1[,3:6],1,prop.table)))
+ages = cbind(mat1[,1:2], 100*t(apply(mat1[,3:6], 1, prop.table)))
 mas1 = subset(ages, ages$state==25)
 #unweighted mean
-lapply(mas1,mean)
+lapply(mas1, mean)
 #weighted mean for Mass
 matmas = subset(mat1, mat1$state==25)
 apply(matmas, 2, sum)/sum(matmas[,3:6])
@@ -82,12 +85,12 @@ apply(matno, 2, sum)/sum(matno[,3:6])
 racesexmat = aggregate(cbind(count=a2034+a3544+a4554+a5564)~racesex+county+state,
                        sum, data=pop06)
 racesmat = racesexmat
-racesmat$race=recode(racesexmat$racesex,"1:2=1; 3:4=2; 5:8=3")
-racesmat$race[racesmat$race==1]="white"
-racesmat$race[racesmat$race==2]="black"
-racesmat$race[racesmat$race==3]="otherrace"
-races=aggregate(count~race+county+state,sum,data=racesmat)
-races=dcast(data=races,state+county~race, value.var='count')
+racesmat$race = recode(racesexmat$racesex, "1:2=1; 3:4=2; 5:8=3")
+racesmat$race[racesmat$race==1] = "white"
+racesmat$race[racesmat$race==2] = "black"
+racesmat$race[racesmat$race==3] = "otherrace"
+races = aggregate(count~race+county+state, sum, data=racesmat)
+races = dcast(data=races, state+county~race, value.var='count')
 #mass weighted race
 race = subset(races, races$state==25)
 apply(race, 2, sum)/sum(race[,3:5])
@@ -97,12 +100,12 @@ apply(raceno, 2, sum)/sum(raceno[,3:5])
 #all weighted race
 apply(races, 2, sum)/sum(races[,3:5])
 
-sexmat=racesexmat
-sexmat$sex=recode(racesexmat$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
-sexmat$sex[sexmat$sex==1]="male"
-sexmat$sex[sexmat$sex==2]="female"
-sexes=aggregate(count~sex+county+state,sum,data=sexmat) 
-sexes=dcast(data=sexes,state+county~sex, value.var = 'count')
+sexmat = racesexmat
+sexmat$sex = recode(racesexmat$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
+sexmat$sex[sexmat$sex==1] = "male"
+sexmat$sex[sexmat$sex==2] = "female"
+sexes = aggregate(count~sex+county+state, sum, data=sexmat) 
+sexes = dcast(data=sexes, state+county~sex, value.var = 'count')
 #mass
 sexmass = subset(sexes, sexes$state==25)
 apply(sexmass, 2, sum)/sum(sexmass[,3:4])
@@ -112,12 +115,13 @@ apply(sexes, 2, sum)/sum(sexes[,3:4])
 sexno = subset(sexes, sexes$state!=25)
 apply(sexno, 2, sum)/sum(sexno[,3:4])
 
-hispmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state,sum,data=pop06)
-hispmat$hisp=recode(hispmat$hisp, '2=1; 1=2; 9=2')
-hispmat$hisp[hispmat$hisp==1]="hisp"
-hispmat$hisp[hispmat$hisp==2]='nothisp'
-hisps=aggregate(count~hisp+county+state,sum,data=hispmat) 
-hisps=dcast(data=hisps,state+county~hisp, value.var='count')
+hispmat = aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state, 
+                    sum, data=pop06)
+hispmat$hisp = recode(hispmat$hisp, '2=1; 1=2; 9=2')
+hispmat$hisp[hispmat$hisp==1] = "hisp"
+hispmat$hisp[hispmat$hisp==2] = 'nothisp'
+hisps = aggregate(count~hisp+county+state, sum, data=hispmat) 
+hisps = dcast(data=hisps, state+county~hisp, value.var='count')
 #mass
 hispmass = subset(hisps, hisps$state==25)
 apply(hispmass, 2, sum)/sum(hispmass[,3:4])
@@ -194,5 +198,101 @@ from the ARF and not from the CDC's CMF.  This is something to look into.
 Now, to check for the control group values given in Table 2:
 
 ```{r}
+race = cbind(races[,1:2], 100*t(apply(races[,3:5], 1, prop.table)))
+
+sex = cbind(sexes[,1:2], 100*t(apply(sexes[,3:4], 1, prop.table)))
+
+hisp = cbind(hisps[,1:2], 100*t(apply(hisps[,3:4], 1, prop.table)))
+
+deaths = aggregate(deaths~county+state+year, sum, data=mort06)
+
+pop06$pops = pop06$a2024 + pop06$a2534 + pop06$a3544 + pop06$a4554 + pop06$a5564
+pops = aggregate(pops~county+state+year, sum, data=pop06)
+pops[which(is.na(pops$pops)),]
+min(pops$pops)
+#checking to see if any of the population variables weren't recorded above
+#checking to see if a year wasn't recorded for a specific county below
+popscheck = dcast(data=pops, state+county~year, value.var='pops')
+popscheck[which(is.na(popscheck$'2006')),]
+rbind(popscheck[which(is.na(popscheck$'2001')),],
+      popscheck[which(is.na(popscheck$'2002')),],
+      popscheck[which(is.na(popscheck$'2003')),],
+      popscheck[which(is.na(popscheck$'2004')),],
+      popscheck[which(is.na(popscheck$'2005')),],
+      popscheck[which(is.na(popscheck$'2006')),])
+#there are two counties that are a problem here.
+total = merge(pops, deaths, by=c('year', 'state', 'county'), all=T)
+total$mrate = total$deaths/total$pops*100000
+total[which(is.na(total$mrate)),]
+#all of these are NA because there is an NA for deaths
+#the four county-years which do not have populations recorded for them 
+#(the same 2 counties for the same 2 years) are no included in the total data frame
+#within totals, these mortality rates are recorded as NA.
+all.equal(which(is.na(total$deaths)),which(is.na(total$mrate)))
+totals = dcast(data=total, state+county~year, value.var='mrate')
+colnames(totals) = c('state', 'county', 'mr01', 'mr02', 'mr03', 'mr04', 'mr05', 'mr06')
+
+totals[is.na(totals)] = 0
+pops = dcast(data=total, state+county~year, value.var='pops')
+pops$pop06 <- apply(pops[ncol(pops):3L], 1, function(x) x[!is.na(x)][1])
+all.equal(pops[!is.na(pops$'2006'),'2006'],pops[!is.na(pops$'2006'),'pop06'])
+pops <- subset(pops, select=c(state,county,pop06))
+model2data = merge(ages, race, by=c('state','county'))
+model2data = merge(model2data, sex, by=c('state','county'))
+model2data = merge(model2data, hisp, by=c('state','county'))
+model2data = merge(model2data, totals, by=c('state','county'))
+model2data = merge(model2data, pops, by=c('state','county'))
+model2data$treat = 0
+model2data$treat[model2data$state==25] = 1
+model2data = merge(model2data, arfall, by=c('state', 'county'))
+
+model2a = glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr05+
+              mr06+pov06
+           +inc06+emp06+ins06, data=model2data, family=binomial(link='logit'))
+fita = fitted(model2a)
+model2adat = cbind(model2data, fita)
+
+
+#top quartile
+fit.q3 = summary(fitted(model2a))[5]
+mass.control = subset(model2adat, model2adat$treat==0 & model2adat$fita>fit.q3)
+mass.control$idvar = paste(mass.control$state, mass.control$county, sep=',')
+
+mat1$idvar = paste(mat1$state, mat1$county, sep=',')
+mat1a = mat1[mat1$idvar %in% mass.control$idvar,]
+apply(mat1a[3:6], 2, sum)/sum(mat1a[,3:6])
+races$idvar = paste(races$state, races$county, sep=',')
+race = races[races$idvar %in% mass.control$idvar,]
+apply(race[3:5], 2, sum)/sum(race[,3:5])
+sexes$idvar = paste(sexes$state, sexes$county, sep=',')
+sex = sexes[sexes$idvar %in% mass.control$idvar,]
+apply(sex[3:4], 2, sum)/sum(sex[,3:4])
+hisps$idvar = paste(hisps$state, hisps$county, sep=',')
+hisp = hisps[hisps$idvar %in% mass.control$idvar,]
+apply(hisp[3:4], 2, sum)/sum(hisp[,3:4])
+
+
+
+#our full matching process
+mass.fm = fullmatch(model2a, data=model2data, omit.fraction=3/4)
+model2data.fm = cbind(model2data, mass.fm)
+mass.fm.control = subset(model2data.fm, model2data.fm$treat==0)
+mass.fm.control = mass.fm.control[!is.na(mass.fm.control$mass.fm),]
+mass.fm.control$idvar = paste(mass.fm.control$state, mass.fm.control$county, sep=',')
+
+mat1b = mat1[mat1$idvar %in% mass.fm.control$idvar,]
+apply(mat1b[3:6], 2, sum)/sum(mat1b[,3:6])
+
+race = races[races$idvar %in% mass.fm.control$idvar,]
+apply(race[3:5], 2, sum)/sum(race[,3:5])
+
+sex = sexes[sexes$idvar %in% mass.fm.control$idvar,]
+apply(sex[3:4], 2, sum)/sum(sex[,3:4])
+
+hisp = hisps[hisps$idvar %in% mass.fm.control$idvar,]
+apply(hisp[3:4], 2, sum)/sum(hisp[,3:4])
+
+
+
 
 ```
