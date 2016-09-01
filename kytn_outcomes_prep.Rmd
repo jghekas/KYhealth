@@ -1,0 +1,191 @@
+---
+title: "KY and TN Outcomes"
+author: "Julie Ghekas"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+```{r}
+stopifnot(file.exists(prepped_data_file <- paste0(datadir, "created/mass_prep.RData")))
+load(prepped_data_file)
+
+library(reshape2)
+library(car)
+library(optmatch)
+library(brglm)
+library(MASS)
+library(geepack)
+
+stopifnot(file.exists("./lib"))
+if ( file.exists(paste0("./lib/", R.version[['platform']], "-library") ) )
+{
+  with_libpaths(with(R.version, paste0("./lib/", platform, "-library/", major, ".", substr(minor, 1,1))),
+		library(RItools)
+		)
+} else with_libpaths("lib/", library(RItools))
+```
+
+```{r}
+pop10 = subset(popall, popall$year>=2005 & popall$year<=2010)
+mort10 = subset(mortall, mortall$year>=2005 & mortall$year<=2010)
+agemat=aggregate(cbind(a2034,a3544,a4554,a5564)~county+state,sum,data=pop10)
+ages=cbind(agemat[,1:2],100*t(apply(agemat[,3:6],1,prop.table)))
+
+racesexmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~racesex+county+state,sum,data=pop10)
+racesmat=racesexmat
+racesmat$race=recode(racesexmat$racesex,"1:2=1; 3:4=2; 5:8=3")
+racesmat$race[racesmat$race==1]="white"
+racesmat$race[racesmat$race==2]="black"
+racesmat$race[racesmat$race==3]="otherrace"
+races=aggregate(count~race+county+state,sum,data=racesmat)
+races=dcast(data=races,state+county~race, value.var='count')
+race=cbind(races[,1:2],100*t(apply(races[,3:5],1,prop.table)))
+
+sexmat=racesexmat
+sexmat$sex=recode(racesexmat$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
+sexmat$sex[sexmat$sex==1]="male"
+sexmat$sex[sexmat$sex==2]="female"
+sexes=aggregate(count~sex+county+state,sum,data=sexmat) 
+sexes=dcast(data=sexes,state+county~sex, value.var = 'count')
+sex=cbind(sexes[,1:2],100*t(apply(sexes[,3:4],1,prop.table)))
+
+hispmat=aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state,sum,data=pop10)
+hispmat$hisp=recode(hispmat$hisp, '2=1; 1=2; 9=2')
+hispmat$hisp[hispmat$hisp==1]="hisp"
+hispmat$hisp[hispmat$hisp==2]='nothisp'
+hisps=aggregate(count~hisp+county+state,sum,data=hispmat) 
+hisps=dcast(data=hisps,state+county~hisp, value.var='count')
+hisp=cbind(hisps[,1:2],100*t(apply(hisps[,3:4],1,prop.table)))
+
+deaths=aggregate(deaths~county+state+year,sum,data=mort10)
+
+pop10$pops=pop10$a2024+pop10$a2534+pop10$a3544+pop10$a4554+pop10$a5564
+pops=aggregate(pops~county+state+year,sum,data=pop10)
+popscheck = dcast(data=pops, state+county~year, value.var='pops')
+popscheck[which(is.na(popscheck$'2010')),]
+rbind(popscheck[which(is.na(popscheck$'2005')),], 
+      popscheck[which(is.na(popscheck$'2006')),], 
+      popscheck[which(is.na(popscheck$'2007')),], 
+      popscheck[which(is.na(popscheck$'2008')),], 
+      popscheck[which(is.na(popscheck$'2009')),], 
+      popscheck[which(is.na(popscheck$'2010')),])
+total=merge(pops,deaths,by=c('year','state','county'), all=T)
+total$mrate=total$deaths/total$pops*100000
+total[which(is.na(total$mrate)),]
+total[which(is.na(total$pops)),]
+all.equal(which(is.na(total$deaths)),which(is.na(total$mrate)))
+total[is.na(total)] = 0
+totals=dcast(data=total,state+county~year,value.var='mrate')
+colnames(totals)=c('state','county','mr05','mr06','mr07','mr08','mr09','mr10')
+pops = aggregate(pops~county+state, sum, data=pops)
+
+modeldata=merge(ages,race,by=c('state','county'))
+modeldata=merge(modeldata,sex,by=c('state','county'))
+modeldata=merge(modeldata,hisp,by=c('state','county'))
+modeldata=merge(modeldata,totals,by=c('state','county'))
+modeldata=merge(modeldata,pops,by=c('state','county'))
+modeldata$treat=0
+modeldata=merge(modeldata,arfall,by=c('state','county'))
+
+model3data = modeldata
+model3data$treat[model3data$state==21]=1
+states.kycontrol=c('1','12','13','16','20','21','22','23','28','29','31','37','40','45','46','47','48','49','51','55','56') #includes Kentucky and other control states
+model3data = model3data[model3data$state %in% states.kycontrol,]
+
+model4data = modeldata
+model4data$treat[model4data$state==47]=1
+states.tncontrol=c('4','5','6','8','9','10','17','18','19','21','24','25','26','27','30','32','33','34','35','36','38','39','41','42','44','47','50','53','54')
+model4data=model4data[model4data$state %in% states.tncontrol,]
+
+```
+
+```{r}
+model3=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
+             pov10+inc10+emp10+ins10,data=model3data,family=binomial(link='logit'))
+fm3<-fullmatch(model3,data=model3data,omit.fraction=3/4)
+model3fit = cbind(model3data, fm3)
+model3fit = model3fit[c('state','county','fm3')]
+
+model4=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr05+mr06+mr07+mr08+mr09+mr10+
+             pov10+inc10+emp10+ins10,data=model4data,family=binomial(link='logit'))
+fm4<-fullmatch(model4,data=model4data,omit.fraction=3/4)
+model4fit = cbind(model4data, fm4)
+model4fit = model4fit[c('state','county','fm4')]
+
+
+popyr = subset(popall, popall$year>=2005)
+popyr$pops = popyr$a2034 + popyr$a3544 + popyr$a4554 + popyr$a5564
+popsyr = aggregate(pops~county+state+year, sum, data=popyr)
+
+ageyr = aggregate(cbind(a2034, a3544, a4554, a5564)~county+state+year, sum, data=popyr)
+ageyr = cbind(ageyr[,1:3],100*t(apply(ageyr[,4:7],1,prop.table)))
+
+rsyr = aggregate(cbind(count=a2034+a3544+a4554+a5564)~racesex+county+state+year,sum,
+                 data=popyr)
+ryr = rsyr
+ryr$race = recode(ryr$racesex, "1:2=1; 3:4=2; 5:8=3")
+ryr$race[ryr$race==1] = 'white'
+ryr$race[ryr$race==2] = 'black'
+ryr$race[ryr$race==3] = 'otherrace'
+racesyr = aggregate(count~race+county+state+year, sum, data=ryr)
+racesyr = dcast(data=racesyr, state+county+year~race, value.var='count')
+raceyr = cbind(racesyr[,1:3],100*t(apply(racesyr[,4:6],1,prop.table)))
+
+syr = rsyr
+syr$sex = recode(syr$racesex, "1=1; 2=2; 3=1; 4=2; 5=1; 6=2; 7=1; 8=2")
+syr$sex[syr$sex==1]='male'
+syr$sex[syr$sex==2]='female'
+sexesyr = aggregate(count~sex+county+state+year, sum, data=syr)
+sexesyr = dcast(data=sexesyr, state+county+year~sex, value.var='count')
+sexyr = cbind(sexesyr[,1:3], 100*t(apply(sexesyr[,4:5],1,prop.table)))
+
+hispyr = aggregate(cbind(count=a2034+a3544+a4554+a5564)~hisp+county+state+year, sum, 
+                   data=popyr)
+hispyr$hisp = recode(hispyr$hisp, '2=1;1=2;9=2')
+hispyr$hisp[hispyr$hisp==1] = 'hisp'
+hispyr$hisp[hispyr$hisp==2] = 'nothisp'
+hispsyr = aggregate(count~hisp+county+state+year, sum, data=hispyr)
+hispsyr = dcast(data=hispsyr, state+county+year~hisp, value.var='count')
+hispyr = cbind(hispsyr[,1:3],100*t(apply(hispsyr[,4:5],1,prop.table)))
+
+mortyr = subset(mortall, mortall$year>=2005)
+deathsyr = aggregate(deaths~county+state+year, sum, data=mortyr)
+
+yeardata = merge(deathsyr, popsyr, by=c('state','county','year'), all=T)
+yeardata[is.na(yeardata)] = 0
+yeardata = merge(yeardata, ageyr, by=c('state','county','year'))
+yeardata = merge(yeardata, raceyr, by=c('state','county','year'))
+yeardata = merge(yeardata, sexyr, by=c('state','county','year'))
+yeardata = merge(yeardata, hispyr, by=c('state','county','year'))
+yeardata$treat = 0
+yeardata$idvar = paste(yeardata$state, yeardata$county, sep=',')
+
+yeardata3 = yeardata
+yeardata3$treat[yeardata$state==21 & yeardata$year>2010] = 1
+
+yeardata4 = yeardata
+yeardata4$treat[yeardata$state==47 & yeardata$year>2010] = 1
+
+year.group3 = merge(yeardata3, model3fit, by=c('state','county'), all=T)
+year.group3 = year.group3[order(year.group3$state, year.group3$county, 
+                                year.group3$year),]
+year.group3 = subset(year.group3, !is.na(year.group3$fm3))
+year.group3$idvar = as.factor(year.group3$idvar)
+
+year.group4 = merge(yeardata4, model4fit, by=c('state','county'), all=T)
+year.group4 = year.group4[order(year.group4$state, year.group4$county, 
+                                year.group4$year),]
+year.group4 = subset(year.group4, !is.na(year.group4$fm4))
+year.group4$idvar = as.factor(year.group4$idvar)
+
+
+kygee = geese(deaths/pops~a2034+a3544+a4554+black+otherrace+female+hisp+treat+
+                  strata(fm3), id=idvar, family=gaussian, data=year.group3, waves=year)
+summary(kygee)
+
+tenngee = geese(deaths/pops~a2034+a3544+a4554+black+otherrace+female+hisp+treat+
+                  strata(fm4), id=idvar, family=gaussian, data=year.group4, waves=year)
+summary(tenngee)
+
+```
+
+Tennessee has a treatment variable that is statistically significant.  What do we do about the fact that there are multiple groups, and so multiple group fixed effects?  There are different numbers of fixed effects for each state (from the different county sizes), so these groups vary in each analysis.
