@@ -22,8 +22,8 @@ pop99 = read.fwf(paste0(datadir, 'pop9913.txt'), width=c(2,3,4,1,1,rep(8,14),25,
 colnames(pop99) = c('state','county','year','racesex','hisp','birth','l1','a14','a59','a1014','a1519','a2024','a2534','a3544','a4554','a5564','a6574','a7584','a85','name','type')
 arf = read.csv(paste0(datadir, 'arfarfsixten.csv'), header=T)
 colnames(arf) = c('state','county','med610','medinc10','medinc06','pov10','pov06','ins10','ins06','unemp10','unemp06')
-arf08 = read.csv(paste0(datadir, 'arf08vars.csv'), header=T)
-arf12 = read.csv(paste0(datadir, 'arf12vars.csv'), header=T) 
+arf08 = read.csv(paste0('./', 'arf08vars.csv'), header=T)
+arf12 = read.csv(paste0('./', 'arf12vars.csv'), header=T) 
 colnames(arf08) = c('state','county','inc07','inc06','inc05','inc04','inc03','inc02',
                     'inc01','inc00',
                     'pov07','pov06','pov05','pov04','pov03','pov02','pov01','pov00',
