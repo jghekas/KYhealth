@@ -8,7 +8,7 @@ output: pdf_document
 To begin, I read in my data from the CDC.
 
 ```{r}
-if (is.null(datadir)) #reproduce results from when below were hard-coded; see dot-Renviron-template.txt
+if (!exists('datadir') || is.null(datadir)) #reproduce results from when below were hard-coded; see dot-Renviron-template.txt
 {
 datadir = "~/Downloads/" 
 mortdatadir = "~/Downloads/mort/"
