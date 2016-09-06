@@ -126,7 +126,7 @@ balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+m
 ##weighted balance assessment for 2005
 balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01
          +mr02+
-           mr03+mr04+pov05+inc05+emp05+ins05, element.weights=pops, 
+           mr03+mr04+pov05+inc05+emp05+ins05, element.weights=pop06, 
          data=men.study, report=c('all'))
 
 
@@ -150,7 +150,7 @@ balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+m
 ##weighted balance assessment for 2006
 balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+
            mr01+mr02+
-           mr03+mr04+pov06+inc06+emp06+ins06, element.weights=pops, 
+           mr03+mr04+pov06+inc06+emp06+ins06, element.weights=pop06, 
          data=men.study, report=c('all'))
 
 
@@ -178,9 +178,9 @@ men.study.out$mr09d = men.study.out$mr09 - men.study.out$mr06
 men.study.out$mr10d = men.study.out$mr10 - men.study.out$mr06
 
 colnames(men.study.out)
-balanceTest(treat~mr07+mr08+mr09+mr10, element.weights=pops, data=men.study.out,
+balanceTest(treat~mr07+mr08+mr09+mr10, element.weights=pop06, data=men.study.out,
          report=c('z.scores', 'p.value', 'chisquare.test'))
-balanceTest(treat~mr07d+mr08d+mr09d+mr10d, element.weights=pops, data=men.study.out,
+balanceTest(treat~mr07d+mr08d+mr09d+mr10d, element.weights=pop06, data=men.study.out,
          report=c('z.scores', 'p.value', 'chisquare.test'))
 
 ##negative binomial model
@@ -241,7 +241,7 @@ balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+
 balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+
            hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+
            ins06+strata(fm2),data=model2data,report=c('z','chisquare.test'),
-         element.weights=pops)
+         element.weights=pop06)
 
 
 model6 = lm(mr06~a2034+a3544+a4554+black+otherrace+female+hisp+mr01+mr02+mr03
