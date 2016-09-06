@@ -30,10 +30,10 @@ load(prepped_data_file)
 stopifnot(file.exists("./lib"))
 if ( file.exists(paste0("./lib/", R.version[['platform']], "-library") ) )
 {
-  with_libpaths(with(R.version, paste0("./lib/", platform, "-library/", major, ".", substr(minor, 1,1))),
+  withr::with_libpaths(with(R.version, paste0("./lib/", platform, "-library/", major, ".", substr(minor, 1,1))),
 		library(RItools)
 		)
-} else with_libpaths("lib/", library(RItools))
+} else withr::with_libpaths("lib/", library(RItools))
 
 library(reshape2)
 library(car)
@@ -120,13 +120,13 @@ men.control = subset(men.control, men.control$treat!=1)
 men.control = subset(men.control, men.control$fit>top4)
 men.study = rbind(men.treat, men.control)
 ##an unweighted balance assessment for 2005 
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01
+balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01
          +mr02+
            mr03+mr04+pov05+inc05+emp05+ins05, data=men.study, report=c('all'))
 ##weighted balance assessment for 2005
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01
+balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+mr01
          +mr02+
-           mr03+mr04+pov05+inc05+emp05+ins05, element.weights=pops, 
+           mr03+mr04+pov05+inc05+emp05+ins05, element.weights=pop06, 
          data=men.study, report=c('all'))
 
 
@@ -144,13 +144,13 @@ men.control = subset(men.control, men.control$treat!=1)
 men.control = subset(men.control, men.control$fit>top4)
 men.study = rbind(men.treat, men.control)
 ##an unweighted balance assessment for 2006
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+
+balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+
            mr01+mr02+
            mr03+mr04+pov06+inc06+emp06+ins06, data=men.study, report=c('all'))
 ##weighted balance assessment for 2006
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+
+balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+hisp+mr05+mr06+
            mr01+mr02+
-           mr03+mr04+pov06+inc06+emp06+ins06, element.weights=pops, 
+           mr03+mr04+pov06+inc06+emp06+ins06, element.weights=pop06, 
          data=men.study, report=c('all'))
 
 
@@ -178,9 +178,9 @@ men.study.out$mr09d = men.study.out$mr09 - men.study.out$mr06
 men.study.out$mr10d = men.study.out$mr10 - men.study.out$mr06
 
 colnames(men.study.out)
-xBalance(treat~mr07+mr08+mr09+mr10, element.weights=pops, data=men.study.out,
+balanceTest(treat~mr07+mr08+mr09+mr10, element.weights=pop06, data=men.study.out,
          report=c('z.scores', 'p.value', 'chisquare.test'))
-xBalance(treat~mr07d+mr08d+mr09d+mr10d, element.weights=pops, data=men.study.out,
+balanceTest(treat~mr07d+mr08d+mr09d+mr10d, element.weights=pop06, data=men.study.out,
          report=c('z.scores', 'p.value', 'chisquare.test'))
 
 ##negative binomial model
@@ -188,10 +188,9 @@ popa = popall[, c(1:5, 14:16, 22)]
 popa = melt(popa, id=c('state','county','year','racesex','hisp'))
 colnames(popa) = c('state','county','year','racesex','hisp','age','count')
 popa$age = recode(popa$age, "'a3544'=11; 'a4554'=12; 'a5564'=13; 'a2034'=10")
-morta = subset(mort99, mort99$age>=9 & mort99$age <=13)
-morta$age = recode(morta$age, "9=10; 10=10; 11=11; 12=12; 13=13")
-morta = aggregate(deaths~state+county+year+racesex+hisp+age,sum,data=morta)
-deathdata = merge(popa, morta, by=c('state','county','year','racesex','hisp','age'), 
+mortall$age = recode(mortall$age, "9=10; 10=10; 11=11; 12=12; 13=13")
+mortall = aggregate(deaths~state+county+year+racesex+hisp+age,sum,data=mortall)
+deathdata = merge(popa, mortall, by=c('state','county','year','racesex','hisp','age'), 
                   all=T)
 deathdata[is.na(deathdata)]=0
 deathdata$treat=0
@@ -235,13 +234,13 @@ model2=glm(treat~a2034+a3544+a4554+male+white+black+hisp+mr01+mr02+mr03+mr04+mr0
 fm2<-fullmatch(model2,data=model2data,omit.fraction=3/4)
 summary(fm2)
 stratumStructure(fm2)
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+
+balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+
            hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+
            ins06+strata(fm2),data=model2data,report=c('z','chisquare.test'))
-xBalance(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+
+balanceTest(treat~a2034+a3544+a4554+a5564+black+otherrace+white+male+
            hisp+mr05+mr06+mr01+mr02+mr03+mr04+pov06+medinc06+unemp06+
            ins06+strata(fm2),data=model2data,report=c('z','chisquare.test'),
-         element.weights=pops)
+         element.weights=pop06)
 
 
 model6 = lm(mr06~a2034+a3544+a4554+black+otherrace+female+hisp+mr01+mr02+mr03
