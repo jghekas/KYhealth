@@ -188,10 +188,9 @@ popa = popall[, c(1:5, 14:16, 22)]
 popa = melt(popa, id=c('state','county','year','racesex','hisp'))
 colnames(popa) = c('state','county','year','racesex','hisp','age','count')
 popa$age = recode(popa$age, "'a3544'=11; 'a4554'=12; 'a5564'=13; 'a2034'=10")
-morta = subset(mort99, mort99$age>=9 & mort99$age <=13)
-morta$age = recode(morta$age, "9=10; 10=10; 11=11; 12=12; 13=13")
-morta = aggregate(deaths~state+county+year+racesex+hisp+age,sum,data=morta)
-deathdata = merge(popa, morta, by=c('state','county','year','racesex','hisp','age'), 
+mortall$age = recode(mortall$age, "9=10; 10=10; 11=11; 12=12; 13=13")
+mortall = aggregate(deaths~state+county+year+racesex+hisp+age,sum,data=mortall)
+deathdata = merge(popa, mortall, by=c('state','county','year','racesex','hisp','age'), 
                   all=T)
 deathdata[is.na(deathdata)]=0
 deathdata$treat=0
